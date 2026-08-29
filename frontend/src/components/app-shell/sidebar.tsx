@@ -16,6 +16,7 @@ import {
   Plus,
   HelpCircle,
   MessageCircle,
+  Flame,
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +34,7 @@ type NavItem = {
 
 const PRIMARY: NavItem[] = [
   { href: "/", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/forge", label: "Forge", icon: <Flame className="h-4 w-4" /> },
   { href: "/pods", label: "Pods", icon: <Boxes className="h-4 w-4" /> },
   { href: "/domains", label: "Domains", icon: <Globe className="h-4 w-4" /> },
 ];
