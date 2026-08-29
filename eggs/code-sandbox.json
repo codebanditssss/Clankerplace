@@ -1,0 +1,61 @@
+{
+  "_comment": "Code Sandbox pod type — flavor-selectable IDE. SANDBOX_FLAVOR picks between code-server (VS Code in browser), claude-code (terminal CLI agent), and plain (just Ubuntu). Default startup binds to :8080 for code-server; for the other flavors :8080 serves a friendly landing page that points the user at the web terminal.",
+  "meta": {
+    "version": "PLCN_v1",
+    "update_url": null
+  },
+  "exported_at": "2026-05-16T00:00:00+00:00",
+  "name": "Code Sandbox",
+  "author": "FuelBorn",
+  "description": "Multi-flavor Ubuntu sandbox. Picks the IDE at deploy time: VS Code in browser (code-server), Claude Code CLI, or plain shell. Persistent /home/container, sudo, public HTTPS URL.",
+  "features": null,
+  "docker_images": {
+    "Ubuntu 22.04 sandbox": "pods-ml/sandbox-ubuntu:1.0"
+  },
+  "file_denylist": [],
+  "startup": "exec /home/container/.start.sh",
+  "config": {
+    "files": {},
+    "startup": {
+      "done": "sandbox ready"
+    },
+    "logs": {},
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -e\napt-get update >/dev/null\napt-get install -y --no-install-recommends curl ca-certificates git sudo gnupg xz-utils >/dev/null\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nFLAVOR=\"${SANDBOX_FLAVOR:-code-server}\"\necho \"==> Code Sandbox install: flavor=$FLAVOR\"\n\n# Optional first-boot repo clone — all flavors honour SANDBOX_GIT_REPO.\nif [ -n \"${SANDBOX_GIT_REPO:-}\" ]; then\n  echo \"==> Cloning $SANDBOX_GIT_REPO into workspace/\"\n  GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=/bin/true timeout 300 git -c credential.helper= -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20 clone --depth=1 \"$SANDBOX_GIT_REPO\" /mnt/server/workspace 2>&1 | tail -20 || echo \"warning: git clone failed/timed out (private repo, bad URL, or network) — skipping; clone manually inside the pod\"\nfi\n\ncase \"$FLAVOR\" in\n  code-server)\n    echo \"==> Installing code-server\"\n    curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/mnt/server/.code-server-prefix --method=standalone\n    # Fix the install-time /mnt/server symlinks so they resolve at runtime\n    # after Wings rebases the volume to /home/container.\n    find /mnt/server/.code-server-prefix -type l | while read l; do\n      tgt=$(readlink \"$l\")\n      case \"$tgt\" in /mnt/server/*)\n        newtgt=${tgt/\\/mnt\\/server\\//\\/home\\/container\\/}\n        ln -sfn \"$newtgt\" \"$l\"\n      ;; esac\n    done\n    mkdir -p /mnt/server/.config/code-server\n    cat > /mnt/server/.config/code-server/config.yaml <<EOF\nbind-addr: 0.0.0.0:8080\nauth: password\npassword: ${SANDBOX_PASSWORD:-changeme-please}\ncert: false\ndisable-telemetry: true\nEOF\n    chmod 600 /mnt/server/.config/code-server/config.yaml\n    ;;\n  claude-code)\n    echo \"==> Installing Claude Code CLI\"\n    # Install into a known PREFIX that survives the /mnt/server -> /home/container handoff.\n    export CLAUDE_INSTALL_PREFIX=/mnt/server/.claude-prefix\n    mkdir -p \"$CLAUDE_INSTALL_PREFIX\"\n    curl -fsSL https://claude.ai/install.sh | bash || echo \"warning: Claude Code install non-zero — user can re-run inside the pod\"\n    ;;\n  plain)\n    echo \"==> Plain Ubuntu sandbox — no IDE preinstalled\"\n    ;;\n  *)\n    echo \"==> Unknown SANDBOX_FLAVOR=$FLAVOR — falling back to plain\"\n    ;;\nesac\n\n# Drop a tiny landing page server we serve on :8080 for non-code-server\n# flavors so the public URL has *something* friendly to return.\nmkdir -p /mnt/server/.landing\ncat > /mnt/server/.landing/index.html <<EOF\n<!doctype html>\n<html><head><title>Code Sandbox · FuelBorn</title>\n<style>body{font-family:ui-monospace,monospace;background:#111;color:#eee;max-width:640px;margin:60px auto;padding:0 24px;line-height:1.5}a{color:#7aa8ff}h1{font-size:18px}</style></head>\n<body><h1>FuelBorn Code Sandbox</h1>\n<p>This pod is running the <strong>$FLAVOR</strong> flavor.</p>\n<p>Open the web terminal from the FuelBorn dashboard and start working. To install your own server here (Next.js, FastAPI, anything), bind it to <code>0.0.0.0:8080</code> and it'll replace this landing page on the public URL.</p>\n</body></html>\nEOF\n\necho '==> Writing startup wrapper /mnt/server/.start.sh'\ncat > /mnt/server/.start.sh <<'STARTSH'\n#!/bin/bash\n# FuelBorn code-sandbox runtime entrypoint. The egg sets SANDBOX_FLAVOR; we\n# branch from there.\nset -e\nexport PATH=/home/container/.code-server-prefix/bin:/home/container/.claude-prefix/bin:$HOME/.local/bin:$PATH\ncd /home/container\nFLAVOR=\"${SANDBOX_FLAVOR:-code-server}\"\necho \"==> Booting code-sandbox flavor=$FLAVOR\"\n\nstart_landing() {\n  # Tiny static server for the non-code-server flavors so the public URL\n  # returns something on :8080 until the user runs their own app.\n  if [ -f /home/container/.landing/index.html ]; then\n    cd /home/container/.landing\n    exec python3 -m http.server 8080\n  fi\n  exec sleep infinity\n}\n\ncase \"$FLAVOR\" in\n  code-server)\n    echo \"sandbox ready (code-server at :8080)\"\n    if [ ! -x /home/container/.code-server-prefix/bin/code-server ]; then\n      echo \"code-server not found — re-running installer\"\n      curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/home/container/.code-server-prefix --method=standalone\n    fi\n    exec /home/container/.code-server-prefix/bin/code-server --bind-addr 0.0.0.0:8080\n    ;;\n  claude-code)\n    echo \"sandbox ready (Claude Code — open the web terminal and run \\`claude\\`)\"\n    start_landing\n    ;;\n  plain)\n    echo \"sandbox ready (plain Ubuntu)\"\n    start_landing\n    ;;\n  *)\n    echo \"sandbox ready (unknown flavor=$FLAVOR — defaulting to plain)\"\n    start_landing\n    ;;\nesac\nSTARTSH\nchmod +x /mnt/server/.start.sh\n\necho '==> Code Sandbox install complete'\n",
+      "container": "ghcr.io/pelican-eggs/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Sandbox flavor",
+      "description": "Which IDE flavor to provision: code-server (VS Code in browser), claude-code (terminal agent), or plain (just Ubuntu).",
+      "env_variable": "SANDBOX_FLAVOR",
+      "default_value": "code-server",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|in:code-server,claude-code,plain"
+    },
+    {
+      "name": "code-server password",
+      "description": "Used to gate the VS Code editor at /. Only meaningful when SANDBOX_FLAVOR=code-server.",
+      "env_variable": "SANDBOX_PASSWORD",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|min:8|max:128"
+    },
+    {
+      "name": "Git repository to clone on first boot",
+      "description": "Optional. Cloned into /home/container/workspace on install. HTTPS URLs only.",
+      "env_variable": "SANDBOX_GIT_REPO",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|url|max:255"
+    }
+  ]
+}

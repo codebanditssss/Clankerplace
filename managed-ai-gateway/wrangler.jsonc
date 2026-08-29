@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pods-managed-ai",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "CF_AIG_CHAT_URL": "https://gateway.ai.cloudflare.com/v1/8a8aeb50be14f6851e4b50768a57710b/huni/compat/chat/completions",
+    "INCEPTION_CHAT_URL": "https://api.inceptionlabs.ai/v1/chat/completions",
+    "PARALLEL_BASE_URL": "https://api.parallel.ai",
+    "OPENCODE_CHAT_URL": "https://opencode.ai/zen/go/v1/chat/completions",
+    "AZURE_IMAGE_URL": "https://priya-moipyrv6-swedencentral.openai.azure.com/openai/deployments/gpt-image-2/images/generations?api-version=2024-02-01",
+    // Pods Managed credit metering. The frontend origin the worker calls back
+    // for balance checks + usage reporting. The matching secrets
+    // MANAGED_TOKEN_SECRET (HMAC, shared with the frontend) and
+    // MANAGED_USAGE_TOKEN (internal-call bearer) are set via `wrangler secret`.
+    // Leave these unset to run the gateway in legacy anonymous mode.
+    "PODS_USAGE_CALLBACK_URL": "https://app.pods.ml"
+  }
+}

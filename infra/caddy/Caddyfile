@@ -1,0 +1,65 @@
+# Host-level Caddy: single TLS terminator on 80/443 for the FQDN.
+# Routes Pelican Panel paths back to the panel container; everything else to
+# the FuelBorn Next.js frontend on 127.0.0.1:3000.
+#
+# Cert is auto-managed via Let's Encrypt (HTTP-01); the same cert is exported
+# to /etc/letsencrypt/live/<fqdn>/ for Wings via /usr/local/sbin/sync-cert.sh.
+
+{$APP_HOST} {
+	encode gzip zstd
+
+	# ----- Pelican Panel paths (Laravel + Filament + REST API + Wings remote) -----
+	# /api/auth, /api/deploy, /api/models, /api/pods/* are OUR routes — keep them
+	# on Next.js. Only Pelican's REST API namespaces go to the panel.
+	#
+	# NOTE: /admin and /admin/* are NOT in the matcher anymore — we now own
+	# /admin as the FuelBorn admin console (Next.js). The Pelican Panel
+	# admin UI is reachable via /server (Filament) and the dedicated
+	# Pelican REST namespaces below. If you need the legacy Pelican
+	# /admin Filament page, hit the panel container directly on :8000.
+	@panel path /server /server/* \
+	            /api/application/* /api/client/* /api/remote/* /api/applications/* \
+	            /livewire/* /sanctum/* \
+	            /password-reset /password-reset/* \
+	            /filament/* /storage/* /vendor/* /assets/* /css/* /js/* \
+	            /pelican-data/* /webhook/* /up /favicon-pelican.ico
+	handle @panel {
+		reverse_proxy 127.0.0.1:8000 {
+			header_up X-Forwarded-Host {host}
+			header_up X-Real-IP        {remote_host}
+		}
+	}
+
+	# ----- everything else → FuelBorn Next.js -----
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+
+# ---------------------------------------------------------------------------
+# Pod-served subdomains under *.bigcat.pw
+# Wildcard cert via Cloudflare DNS-01 (token in /etc/caddy/cloudflare.env).
+# Per-domain include files under /etc/caddy/domains/<slug>.caddy define
+# the slug → container reverse proxy. Containers DO NOT bind any host
+# port — Caddy reaches them on the docker bridge IP.
+*.bigcat.pw {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	# Shared access log for every pod subdomain — one rotating JSON file.
+	# The Next.js frontend tails this and filters by request.host (=slug.<root>)
+	# to render the per-connector "Webhook events" inspector. The dir is
+	# created by the pods-ml-domain helper with the right ownership.
+	log {
+		output file /var/log/caddy/pods/access.log {
+			roll_size 50mb
+			roll_keep 4
+			roll_keep_for 168h
+		}
+		format json
+	}
+	import /etc/caddy/domains/*.caddy
+	handle {
+		respond "this domain is not mapped to a container yet" 404
+	}
+}

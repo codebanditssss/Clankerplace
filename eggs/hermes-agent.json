@@ -1,0 +1,352 @@
+{
+  "_comment": "FuelBorn Hermes Agent egg — v4. Uses Hermes's native env-var schema (HERMES_INFERENCE_PROVIDER + provider-prefixed key envs) instead of the pre-v4 generic LLM_* triple. The frontend's /api/deploy projects user-supplied credentials into the right vars; the install script writes them out to /home/container/.hermes/.env and seeds ~/.hermes/config.yaml with the chosen model.",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-05-15T00:00:00+00:00",
+  "name": "Hermes Agent",
+  "author": "FuelBorn",
+  "description": "Nous Research Hermes Agent (github.com/NousResearch/hermes-agent) running inside a full Ubuntu 22.04 sandbox. The user has passwordless sudo and can install anything via apt. The agent itself is pre-installed and configured from the LLM provider variables you set at deploy time.",
+  "features": null,
+  "docker_images": {
+    "Ubuntu 22.04": "pods-ml/sandbox-ubuntu:1.0"
+  },
+  "file_denylist": [],
+  "startup": "exec /usr/local/bin/pods-ml-pod-init.sh",
+  "config": {
+    "files": "{}",
+    "startup": "{\r\n    \"done\": \"pods\"\r\n}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -e\napt-get update >/dev/null\napt-get install -y --no-install-recommends curl ca-certificates git build-essential xz-utils sudo >/dev/null\n\nmkdir -p /mnt/server /mnt/server/.tmp /mnt/server/.hermes\ncd /mnt/server\n\nexport TMPDIR=/mnt/server/.tmp\nexport HOME=/mnt/server\nexport HERMES_HOME=/mnt/server/.hermes\nexport HERMES_INSTALL_DIR=/mnt/server/hermes-agent\n\necho '==> Installing Hermes Agent from upstream'\ncurl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh \\\n  | bash -s -- --skip-setup --dir /mnt/server/hermes-agent\n\necho '==> Rewriting install-time paths from /mnt/server to /home/container'\nfind /mnt/server -path '*/venv/bin/*' -type f -print0 2>/dev/null \\\n  | xargs -0 -I{} sed -i '1s|/mnt/server/|/home/container/|g' {} 2>/dev/null || true\n[ -f /mnt/server/.local/bin/hermes ] && sed -i 's|/mnt/server/|/home/container/|g' /mnt/server/.local/bin/hermes\n[ -f /mnt/server/hermes-agent/venv/pyvenv.cfg ] && sed -i 's|/mnt/server/|/home/container/|g' /mnt/server/hermes-agent/venv/pyvenv.cfg\nfind /mnt/server -type l | while read l; do\n  tgt=$(readlink \"$l\")\n  case \"$tgt\" in /mnt/server/*)\n    newtgt=${tgt/\\/mnt\\/server\\//\\/home\\/container\\/}\n    ln -sfn \"$newtgt\" \"$l\"\n  ;; esac\ndone\nfind /mnt/server/hermes-agent/venv/lib /mnt/server/.local/share/uv -type f \\( -name '*.py' -o -name '*.pth' -o -name '*.cfg' -o -name '*.json' -o -name '*.toml' \\) -print0 2>/dev/null \\\n  | xargs -0 -I{} sh -c \"grep -l '/mnt/server' \\\"\\$1\\\" >/dev/null 2>&1 && sed -i 's|/mnt/server/|/home/container/|g' \\\"\\$1\\\"\" _ {} || true\nfind /mnt/server -type d -name '__pycache__' -print0 2>/dev/null | xargs -0 rm -rf 2>/dev/null || true\n\necho '==> Seeding ~/.hermes/.env from deploy-time variables'\nENV_FILE=/mnt/server/.hermes/.env\n: > \"$ENV_FILE\"\nchmod 600 \"$ENV_FILE\"\n# Inference provider selection (consumed by `hermes` CLI on first run).\n[ -n \"${HERMES_INFERENCE_PROVIDER:-}\" ] && echo \"HERMES_INFERENCE_PROVIDER=${HERMES_INFERENCE_PROVIDER}\" >> \"$ENV_FILE\"\n# Walk every PODS_KEY_* environment var Pelican injected and emit the\n# real Hermes env var (PODS_KEY_FOO=bar -> FOO=bar). This lets us add new\n# providers without touching the egg JSON.\nfor v in $(env | awk -F= '/^PODS_KEY_/ {print $1}'); do\n  real=${v#PODS_KEY_}\n  val=$(printenv \"$v\")\n  [ -n \"$val\" ] && echo \"${real}=${val}\" >> \"$ENV_FILE\"\ndone\n\necho '==> Writing ~/.hermes/config.yaml model default'\nCFG=/mnt/server/.hermes/config.yaml\nif [ -n \"${HERMES_INFERENCE_MODEL:-}\" ]; then\n  cat > \"$CFG\" <<YAML\nmodel:\n  default: \"${HERMES_INFERENCE_MODEL}\"\n  provider: \"${HERMES_INFERENCE_PROVIDER:-auto}\"\nYAML\n  # Custom-provider path: Hermes (agent/credential_pool.py) only honours\n  # provider=\"custom\" when model.base_url + model.api_key are present in\n  # config.yaml. The OPENAI_BASE_URL/OPENAI_API_KEY env vars in .hermes/.env\n  # are NOT picked up for this provider — so we inject them here.\n  if [ \"${HERMES_INFERENCE_PROVIDER:-}\" = \"custom\" ]; then\n    [ -n \"${PODS_KEY_OPENAI_API_KEY:-}\" ] && echo \"  api_key: '${PODS_KEY_OPENAI_API_KEY}'\" >> \"$CFG\"\n    # API format toggle. Anthropic Messages picks Hermes' native\n    # transport (sanitizes empty content); OpenAI Chat Completions\n    # routes through the in-pod sanitizer proxy that pads empty\n    # blocks before they reach the upstream Claude relay.\n    case \"${PODS_KEY_HERMES_API_MODE:-openai}\" in\n      anthropic)\n        [ -n \"${PODS_KEY_OPENAI_BASE_URL:-}\" ] && echo \"  base_url: '${PODS_KEY_OPENAI_BASE_URL}'\" >> \"$CFG\"\n        echo \"  api_mode: anthropic_messages\" >> \"$CFG\"\n        [ -n \"${PODS_KEY_OPENAI_API_KEY:-}\" ] && echo \"ANTHROPIC_API_KEY=${PODS_KEY_OPENAI_API_KEY}\" >> \"$ENV_FILE\"\n        [ -n \"${PODS_KEY_OPENAI_BASE_URL:-}\" ] && echo \"ANTHROPIC_BASE_URL=${PODS_KEY_OPENAI_BASE_URL%/v1}\" >> \"$ENV_FILE\"\n        ;;\n      *)\n        echo \"  base_url: 'http://127.0.0.1:8765/v1'\" >> \"$CFG\"\n        echo \"  api_mode: chat_completions\" >> \"$CFG\"\n        # Sanitizer reads the real upstream from this env file at\n        # boot — the frontend's wireHermesProxy drops sanitizer.py +\n        # sanitizer.sh into .pods/ post-install, and the patched\n        # pods-ml-pod-init.sh runs sanitizer.sh on every container\n        # start.\n        mkdir -p /mnt/server/.pods\n        echo \"PODS_SANITIZER_UPSTREAM=${PODS_KEY_OPENAI_BASE_URL%/v1}\" > /mnt/server/.pods/sanitizer.env\n        echo \"PODS_SANITIZER_PORT=8765\" >> /mnt/server/.pods/sanitizer.env\n        chmod 600 /mnt/server/.pods/sanitizer.env\n        ;;\n    esac\n  fi\n  cat >> \"$CFG\" <<YAML\nauxiliary:\n  compression:\n    provider: main\nYAML\nfi\n\necho '==> Pre-installing WhatsApp bridge dependencies (Baileys + libsignal-node)'\n# Doing this in the Pelican install container avoids OOM at runtime: the\n# install container gets a bigger memory budget than the user pod, and\n# Baileys pulls libsignal-node from git which spikes RAM during prepare.\nBRIDGE=/mnt/server/hermes-agent/scripts/whatsapp-bridge\nif [ -d \"$BRIDGE\" ] && [ ! -d \"$BRIDGE/node_modules/@whiskeysockets/baileys\" ]; then\n  if command -v npm >/dev/null 2>&1; then NPM_BIN=npm;\n  elif [ -x /mnt/server/.hermes/node/bin/npm ]; then NPM_BIN=/mnt/server/.hermes/node/bin/npm; export PATH=/mnt/server/.hermes/node/bin:$PATH;\n  else NPM_BIN=\"\"; fi\n  if [ -n \"$NPM_BIN\" ]; then\n    (cd \"$BRIDGE\" && NODE_OPTIONS=\"--max-old-space-size=2048\" $NPM_BIN install --silent --no-audit --no-fund --maxsockets=4 2>&1 | tail -10) || echo \"warning: bridge npm install returned non-zero — pairing wizard will retry at first use\"\n  else\n    echo \"warning: no npm found at install time — bridge will install at first pairing\"\n  fi\nfi\n\necho '==> Hermes Agent install complete'\n",
+      "container": "ghcr.io/pelican-eggs/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Hermes inference provider",
+      "description": "Slug Hermes uses to pick a provider (openrouter, anthropic, openai-codex, gemini, novita, deepseek, xai, …). The frontend writes the matching API-key env vars; you can change provider later from the pod's Settings tab or by running `hermes setup` inside the pod.",
+      "env_variable": "HERMES_INFERENCE_PROVIDER",
+      "default_value": "openrouter",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:64",
+      "field_type": "text"
+    },
+    {
+      "name": "Default model",
+      "description": "Model id seeded into ~/.hermes/config.yaml (model.default). Change later with `hermes model` inside the pod.",
+      "env_variable": "HERMES_INFERENCE_MODEL",
+      "default_value": "nousresearch/hermes-3-llama-3.1-70b",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:128",
+      "field_type": "text"
+    },
+    {
+      "name": "OpenRouter API key",
+      "description": "API key for OpenRouter, written to ~/.hermes/.env as OPENROUTER_API_KEY.",
+      "env_variable": "PODS_KEY_OPENROUTER_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Nous Portal API key",
+      "description": "API key for Nous Portal — written as NOUS_API_KEY.",
+      "env_variable": "PODS_KEY_NOUS_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Anthropic API key",
+      "description": "ANTHROPIC_API_KEY for Claude via console.anthropic.com.",
+      "env_variable": "PODS_KEY_ANTHROPIC_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "OpenAI API key",
+      "description": "OPENAI_API_KEY for api.openai.com (also used for custom OpenAI-compatible endpoints).",
+      "env_variable": "PODS_KEY_OPENAI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "OpenAI base URL",
+      "description": "Optional OPENAI_BASE_URL override (used by the Custom provider).",
+      "env_variable": "PODS_KEY_OPENAI_BASE_URL",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:256",
+      "field_type": "text"
+    },
+    {
+      "name": "Google AI Studio API key",
+      "description": "GOOGLE_API_KEY for Gemini via the OpenAI-compatible endpoint.",
+      "env_variable": "PODS_KEY_GOOGLE_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "NovitaAI API key",
+      "description": "NOVITA_API_KEY.",
+      "env_variable": "PODS_KEY_NOVITA_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "DeepSeek API key",
+      "description": "DEEPSEEK_API_KEY.",
+      "env_variable": "PODS_KEY_DEEPSEEK_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "xAI API key",
+      "description": "XAI_API_KEY for Grok models.",
+      "env_variable": "PODS_KEY_XAI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Hugging Face token",
+      "description": "HF_TOKEN.",
+      "env_variable": "PODS_KEY_HF_TOKEN",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "NVIDIA API key",
+      "description": "NVIDIA_API_KEY for NVIDIA NIM endpoints.",
+      "env_variable": "PODS_KEY_NVIDIA_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Ollama Cloud API key",
+      "description": "OLLAMA_API_KEY for Ollama Cloud.",
+      "env_variable": "PODS_KEY_OLLAMA_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Vercel AI Gateway key",
+      "description": "AI_GATEWAY_API_KEY.",
+      "env_variable": "PODS_KEY_AI_GATEWAY_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "z.ai / GLM API key",
+      "description": "GLM_API_KEY.",
+      "env_variable": "PODS_KEY_GLM_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Kimi (Moonshot) API key",
+      "description": "KIMI_API_KEY.",
+      "env_variable": "PODS_KEY_KIMI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Kimi China API key",
+      "description": "KIMI_CN_API_KEY for api.moonshot.cn.",
+      "env_variable": "PODS_KEY_KIMI_CN_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "MiniMax API key",
+      "description": "MINIMAX_API_KEY (global endpoint).",
+      "env_variable": "PODS_KEY_MINIMAX_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "MiniMax China API key",
+      "description": "MINIMAX_CN_API_KEY for api.minimaxi.com.",
+      "env_variable": "PODS_KEY_MINIMAX_CN_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Alibaba DashScope API key",
+      "description": "DASHSCOPE_API_KEY for Qwen via Alibaba Model Studio.",
+      "env_variable": "PODS_KEY_DASHSCOPE_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Xiaomi MiMo API key",
+      "description": "XIAOMI_API_KEY.",
+      "env_variable": "PODS_KEY_XIAOMI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "StepFun API key",
+      "description": "STEPFUN_API_KEY.",
+      "env_variable": "PODS_KEY_STEPFUN_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Tencent TokenHub API key",
+      "description": "TOKENHUB_API_KEY.",
+      "env_variable": "PODS_KEY_TOKENHUB_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Arcee AI API key",
+      "description": "ARCEEAI_API_KEY.",
+      "env_variable": "PODS_KEY_ARCEEAI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "GMI Cloud API key",
+      "description": "GMI_API_KEY.",
+      "env_variable": "PODS_KEY_GMI_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Kilo Code API key",
+      "description": "KILOCODE_API_KEY.",
+      "env_variable": "PODS_KEY_KILOCODE_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Azure Foundry API key",
+      "description": "AZURE_FOUNDRY_API_KEY.",
+      "env_variable": "PODS_KEY_AZURE_FOUNDRY_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "Azure Foundry base URL",
+      "description": "AZURE_FOUNDRY_BASE_URL.",
+      "env_variable": "PODS_KEY_AZURE_FOUNDRY_BASE_URL",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:256",
+      "field_type": "text"
+    },
+    {
+      "name": "GitHub Copilot token",
+      "description": "COPILOT_GITHUB_TOKEN (gho_… or fine-grained PAT).",
+      "env_variable": "PODS_KEY_COPILOT_GITHUB_TOKEN",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "OpenCode Zen API key",
+      "description": "OPENCODE_ZEN_API_KEY.",
+      "env_variable": "PODS_KEY_OPENCODE_ZEN_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    },
+    {
+      "name": "OpenCode Go API key",
+      "description": "OPENCODE_GO_API_KEY.",
+      "env_variable": "PODS_KEY_OPENCODE_GO_API_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": true,
+      "rules": "nullable|string|max:512",
+      "field_type": "text"
+    }
+  ]
+}

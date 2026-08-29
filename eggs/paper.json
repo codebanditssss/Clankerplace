@@ -1,0 +1,100 @@
+{
+    "_comment": "Paper (Minecraft) pod type — stock Pelican Paper egg, exported from the panel (PLCN_v3). Install script was patched to fetch from PaperMC's new Fill v3 API (fill.papermc.io/v3) because the legacy v2 API (api.papermc.io/v2) was sunset and started returning a JSON error that got saved as a corrupt server.jar. Re-import via EggImporterService (see README) after editing to apply to the live panel.",
+    "meta": {
+        "version": "PLCN_v3",
+        "update_url": null
+    },
+    "exported_at": "2026-07-06T19:05:45+00:00",
+    "name": "Paper",
+    "author": "parker@pterodactyl.io",
+    "uuid": "919a66fc-e147-42b2-ba24-0ed870729f1b",
+    "description": "High performance Spigot fork that aims to fix gameplay and mechanics inconsistencies.",
+    "icon": null,
+    "tags": [],
+    "features": [
+        "eula",
+        "java_version",
+        "pid_limit"
+    ],
+    "docker_images": {
+        "Java 8": "ghcr.io/pterodactyl/yolks:java_8",
+        "Java 11": "ghcr.io/pterodactyl/yolks:java_11",
+        "Java 16": "ghcr.io/pterodactyl/yolks:java_16",
+        "Java 17": "ghcr.io/pterodactyl/yolks:java_17",
+        "Java 18": "ghcr.io/pterodactyl/yolks:java_18",
+        "Java 21": "ghcr.io/pterodactyl/yolks:java_21"
+    },
+    "file_denylist": [],
+    "startup_commands": {
+        "Default": "java -Xms128M -Xmx{{SERVER_MEMORY}}M -Dterminal.jline=false -Dterminal.ansi=true -jar {{SERVER_JARFILE}}"
+    },
+    "config": {
+        "files": "{\n    \"server.properties\": {\n        \"parser\": \"properties\",\n        \"find\": {\n            \"server-ip\": \"0.0.0.0\",\n            \"server-port\": \"{{server.allocations.default.port}}\",\n            \"query.port\": \"{{server.allocations.default.port}}\"\n        }\n    }\n}",
+        "startup": "{\n    \"done\": \")! For help, type \"\n}",
+        "logs": "{}",
+        "stop": "stop"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/ash\n# Paper Installation Script\n# Updated to use the PaperMC \"Fill\" v3 API (https://fill.papermc.io/v3)\n# because the legacy v2 API (api.papermc.io/v2) has been sunset.\n#\n# Server Files: /mnt/server\nPROJECT=paper\nAPI=https://fill.papermc.io/v3/projects/${PROJECT}\n\nif [ -n \"${DL_PATH}\" ]; then\n\techo -e \"Using supplied download url: ${DL_PATH}\"\n\tDOWNLOAD_URL=`eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g')`\nelse\n\t# The v3 API groups versions under major keys (newest first); flatten them.\n\tALL_VERSIONS=`curl -s ${API} | jq -r '.versions | to_entries | map(.value) | add | .[]'`\n\n\t# Is the requested version an exact match?\n\tVER_EXISTS=`echo \"${ALL_VERSIONS}\" | grep -x \"${MINECRAFT_VERSION}\" | head -n1`\n\t# Newest stable Minecraft release (1.x line, no -rc/-pre/-snapshot suffix).\n\tLATEST_VERSION=`echo \"${ALL_VERSIONS}\" | grep -E '^1\\.' | grep -v '-' | head -n1`\n\n\tif [ -n \"${VER_EXISTS}\" ]; then\n\t\techo -e \"Version is valid. Using version ${MINECRAFT_VERSION}\"\n\telse\n\t\techo -e \"Specified version not found. Defaulting to the latest ${PROJECT} version\"\n\t\tMINECRAFT_VERSION=${LATEST_VERSION}\n\tfi\n\n\t# Resolve the build (and its direct download URL) from the API.\n\tif [ \"${BUILD_NUMBER}\" == \"latest\" ] || [ -z \"${BUILD_NUMBER}\" ]; then\n\t\tBUILD_JSON=`curl -s ${API}/versions/${MINECRAFT_VERSION}/builds/latest`\n\telse\n\t\tBUILD_JSON=`curl -s ${API}/versions/${MINECRAFT_VERSION}/builds/${BUILD_NUMBER}`\n\t\tif [ \"`echo \"${BUILD_JSON}\" | jq -r '.id // empty'`\" == \"\" ]; then\n\t\t\techo -e \"Build ${BUILD_NUMBER} not found for ${MINECRAFT_VERSION}, using latest build\"\n\t\t\tBUILD_JSON=`curl -s ${API}/versions/${MINECRAFT_VERSION}/builds/latest`\n\t\tfi\n\tfi\n\n\tBUILD_NUMBER=`echo \"${BUILD_JSON}\" | jq -r '.id'`\n\tDOWNLOAD_URL=`echo \"${BUILD_JSON}\" | jq -r '.downloads[\"server:default\"].url'`\n\n\techo \"Version being downloaded\"\n\techo -e \"MC Version: ${MINECRAFT_VERSION}\"\n\techo -e \"Build: ${BUILD_NUMBER}\"\nfi\n\ncd /mnt/server\n\necho -e \"Running curl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\"\n\nif [ -f ${SERVER_JARFILE} ]; then\n\tmv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\nfi\n\ncurl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\n\nif [ ! -f server.properties ]; then\n    echo -e \"Downloading MC server.properties\"\n    curl -o server.properties https://raw.githubusercontent.com/parkervcp/eggs/master/minecraft/java/server.properties\nfi\necho \"eula=true\" > /mnt/server/eula.txt\necho \"==> EULA accepted at deploy time\"\n",
+            "container": "ghcr.io/parkervcp/installers:alpine",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [
+        {
+            "sort": null,
+            "name": "Build Number",
+            "description": "The build number for the paper release.\r\n\r\nLeave at latest to always get the latest version. Invalid versions will default to latest.",
+            "env_variable": "BUILD_NUMBER",
+            "default_value": "latest",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:20"
+            ]
+        },
+        {
+            "sort": null,
+            "name": "Download Path",
+            "description": "A URL to use to download a server.jar rather than the ones in the install script. This is not user viewable.",
+            "env_variable": "DL_PATH",
+            "default_value": "",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": [
+                "nullable",
+                "string"
+            ]
+        },
+        {
+            "sort": null,
+            "name": "Minecraft Version",
+            "description": "The version of minecraft to download. \r\n\r\nLeave at latest to always get the latest version. Invalid versions will default to latest.",
+            "env_variable": "MINECRAFT_VERSION",
+            "default_value": "latest",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:20"
+            ]
+        },
+        {
+            "sort": null,
+            "name": "Server Jar File",
+            "description": "The name of the server jarfile to run the server with.",
+            "env_variable": "SERVER_JARFILE",
+            "default_value": "server.jar",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "regex:/^([\\w\\d._-]+)(\\.jar)$/"
+            ]
+        }
+    ]
+}

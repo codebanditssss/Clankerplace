@@ -1,0 +1,34 @@
+# Node 2 internal reverse-proxy on the tailnet.
+# Node 1 fronts TLS at <slug>.bigcat.pw and proxies plain HTTP here for
+# any pod that lives on node 2. We route by Host header (set by node 1's
+# `header_up Host {host}`) and forward to local container IPs on the
+# pelican0 bridge (172.21.0.0/16).
+#
+# Only port 80 — TLS is terminated at the edge on node 1. NSG blocks
+# inbound :80 from the public internet, so this is tailnet-only in
+# practice.
+{
+	# Admin endpoint on localhost only (default) — needed so `systemctl
+	# reload caddy` can push updated config after the helper script
+	# rewrites domain includes. Never exposed off-host.
+	auto_https off
+}
+
+# Bind ONLY to the tailnet IP so the public NSG holes don't expose
+# this listener. The per-slug includes under /etc/caddy/domains/ do
+# their own Host-matching with @slug matchers.
+:80 {
+	bind 100.92.124.106
+	log {
+		output file /var/log/caddy/pods/access.log {
+			roll_size 50mb
+			roll_keep 4
+			roll_keep_for 168h
+		}
+		format json
+	}
+	import /etc/caddy/domains/*.caddy
+	handle {
+		respond "this slug is not mapped to a node-2 container" 404
+	}
+}

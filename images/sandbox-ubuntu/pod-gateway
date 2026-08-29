@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# pod-gateway — convenience wrapper around the in-pod hermes gateway
+# supervisor. The supervisor (started by /usr/local/bin/pods-ml-pod-init.sh
+# at container boot) keeps `hermes gateway run` alive whenever connector
+# credentials exist in ~/.hermes/.env.
+#
+# IMPORTANT — platform child bridges:
+#   Some platform adapters (notably WhatsApp's Baileys bridge) run as their
+#   own long-lived Node.js subprocess listening on a port (default 3000).
+#   When `hermes gateway run` exits, that bridge keeps running and the new
+#   gateway just RE-ATTACHES to it via /health (see
+#   gateway/platforms/whatsapp.py::connect()) — meaning a plain gateway
+#   restart does NOT pick up new env vars like WHATSAPP_MODE,
+#   WHATSAPP_ALLOWED_USERS, or WHATSAPP_ENABLED. So `restart` (and `stop`)
+#   here also kill known bridge processes so the supervised gateway
+#   relaunches them fresh with the latest .env.
+set -u
+
+LOGFILE=${HOME}/.hermes/logs/gateway.log
+DISABLED=${HOME}/.hermes/.supervisor-disabled
+
+# Patterns for child bridge processes that need to be killed alongside the
+# gateway. Add new bridges here as Hermes ships them. The patterns target
+# the script path so we never match our own bash argv.
+BRIDGE_PATTERNS=(
+  'whatsapp-bridge/bridge.js'
+)
+
+kill_bridges() {
+  for pat in "${BRIDGE_PATTERNS[@]}"; do
+    pkill -f "$pat" 2>/dev/null || true
+  done
+  # Also remove stale pidfiles so the new bridge doesn't try to clean up
+  # a PID that's already been reused by an unrelated process.
+  rm -f "${HOME}"/.hermes/whatsapp/bridge.pid \
+        "${HOME}"/.hermes/platforms/whatsapp/bridge.pid 2>/dev/null || true
+}
+
+cmd="${1:-status}"
+case "$cmd" in
+  status)
+    if pgrep -af 'venv/bin/hermes gateway run' >/dev/null; then
+      echo "▸ gateway: running"
+      pgrep -af 'venv/bin/hermes gateway run' | sed 's/^/    /'
+    else
+      echo "▸ gateway: not running"
+    fi
+    if pgrep -af 'pods-ml-pod-init' >/dev/null; then
+      echo "▸ supervisor: running"
+    else
+      echo "▸ supervisor: not running — restart the pod from FuelBorn"
+    fi
+    for pat in "${BRIDGE_PATTERNS[@]}"; do
+      if pgrep -af "$pat" >/dev/null; then
+        echo "▸ bridge ($pat): running"
+        pgrep -af "$pat" | sed 's/^/    /'
+      fi
+    done
+    if [[ -e "$DISABLED" ]]; then
+      echo "▸ supervisor paused — run \`pod-gateway enable\` to resume"
+    fi
+    ;;
+  logs)
+    tail -n 200 -F "$LOGFILE"
+    ;;
+  restart)
+    kill_bridges
+    pkill -f 'venv/bin/hermes gateway run' 2>/dev/null || true
+    rm -f "$DISABLED"
+    echo "kill sent — supervisor will respawn in ~5s (bridges will reload from .env)"
+    ;;
+  stop|disable)
+    touch "$DISABLED"
+    kill_bridges
+    pkill -f 'venv/bin/hermes gateway run' 2>/dev/null || true
+    echo "gateway + bridges stopped, supervisor paused (\`pod-gateway enable\` to resume)"
+    ;;
+  start|enable)
+    rm -f "$DISABLED"
+    echo "supervisor resumed — gateway will start within ~5s"
+    ;;
+  *)
+    cat <<EOF
+usage: pod-gateway {status|logs|restart|stop|start}
+
+  status     show whether hermes gateway + supervisor + bridges are running
+  logs       stream ~/.hermes/logs/gateway.log
+  restart    kill gateway + platform bridges; supervisor respawns them
+             with the latest ~/.hermes/.env in ~5s
+  stop       kill gateway + bridges AND pause the supervisor (no auto-restart)
+  start      resume the supervisor (gateway will start in ~5s)
+EOF
+    ;;
+esac

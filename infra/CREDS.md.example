@@ -1,0 +1,201 @@
+# FuelBorn — credentials inventory (template)
+
+> This is the **template**. The real values live at:
+>
+> * `infra/CREDS.md` locally (gitignored)
+> * `/root/pods-ml-creds.md` on the VM (mode 0640, root:podsadmin)
+>
+> Copy this file to `infra/CREDS.md`, fill in real values, and treat it as
+> the single source of truth for "what's the password to X." Rotate after
+> any compromise and update this file.
+
+---
+
+## Local workstation → server access
+
+| Key | Value |
+|---|---|
+| SSH private key | `~/.ssh/<keyname>` (mode 0600 — never check in) |
+| SSH public key fingerprint | `SHA256:<fingerprint>` |
+| VM user | `podsadmin` |
+| Connect command | `ssh podsadmin@<fqdn>` |
+
+## Azure
+
+| Key | Value |
+|---|---|
+| Subscription | `<name>` |
+| Account | `<email>` |
+| Tenant ID | `<GUID>` |
+| Login command | `az login` |
+| Resource group | `PODS-ML-PROTOTYPE` (eastus) |
+| Node 1 VM | `pods-ml-prototype` — public `172.174.92.191` / vnet `10.0.0.4` |
+| Node 2 VM | `pods-ml-node2` — public `20.51.150.92` / vnet `10.0.0.5` |
+| Both NICs | `pods-ml-prototypeVNET` / `pods-ml-prototypeSubnet` (`10.0.0.0/24`) |
+| NSG | `pods-ml-prototype-nsg` (shared by both NICs) |
+
+## Tailscale (cross-node networking — see `infra/TAILSCALE.md`)
+
+| Key | Value |
+|---|---|
+| Account email | `<email>` |
+| Auth key (reusable, non-ephemeral) | `tskey-auth-…` |
+| Node 1 tailnet name / IP | `pods-ml-node1` / `100.105.7.103` |
+| Node 2 tailnet name / IP | `pods-ml-node2` / `100.92.124.106` |
+| Admin (route approval) | <https://login.tailscale.com/admin/machines> |
+| ACL editor | <https://login.tailscale.com/admin/acls/file> |
+| Node 1 advertised subnet | `172.18.0.0/16` (docker bridge `pelican_nw`) |
+| Node 2 advertised subnet | `172.21.0.0/16` (docker bridge `pelican_nw`) |
+
+## DNS
+
+| Zone | Records |
+|---|---|
+| `pods.ml` (Cloudflare, DNS only) | A `pods.ml` / `app.pods.ml` / `www.pods.ml` → `172.174.92.191` |
+| `bigcat.pw` (Cloudflare, DNS only) | A `*` → `172.174.92.191` ; MX `inbox` → Resend |
+
+## OAuth provider redirect URIs to keep registered
+
+| Provider | Callback URL |
+|---|---|
+| Google | `https://app.pods.ml/api/auth/oauth/google/callback` |
+| GitHub | `https://app.pods.ml/api/auth/oauth/github/callback` |
+
+## GitHub
+
+| Key | Value |
+|---|---|
+| Repo | `<url>` |
+| gh CLI account | `<handle>` |
+| Token scopes | `repo`, `workflow`, … |
+
+## VM
+
+| Key | Value |
+|---|---|
+| Hostname | `pods-ml-prototype.eastus.cloudapp.azure.com` |
+| Azure RG | `pods-ml-prototype` |
+| Region | `eastus` |
+| VM SKU | `Standard_D4s_v5` |
+| Admin SSH user | `podsadmin` (key auth, `~/.ssh/id_ed25519`) |
+| Public IP | `<filled in on VM>` |
+
+## Pelican Panel (Docker Compose)
+
+| Key | Value |
+|---|---|
+| Panel container | `pelican-panel-1` |
+| Panel UI | `https://<fqdn>/admin` |
+| Admin user (email / username) | `<your-admin-email>` / `<admin-username>` |
+| Admin password | `<set via php artisan p:user:make on first install>` |
+| `APP_KEY` | `<32-char base64 — Laravel encryption key>` |
+| `APP_URL` | `https://<fqdn>` |
+
+## MariaDB (panel database)
+
+| Key | Value |
+|---|---|
+| Container | `pelican-database-1` |
+| Image | `mariadb:10.11` |
+| Host (from panel) | `database` |
+| Database | `panel` |
+| `MYSQL_ROOT_PASSWORD` | `<48-char hex>` |
+| `MYSQL_USER` | `pelican` |
+| `MYSQL_PASSWORD` | `<48-char hex — same as DB_PASSWORD in panel env>` |
+
+## Wings (host binary, not a container)
+
+| Key | Value |
+|---|---|
+| Config | `/etc/pelican/config.yml` (root:wings 0640) |
+| Node UUID | `<from panel: Admin → Nodes → ID>` |
+| `token_id` | `<16-char id, paired with the panel node>` |
+| `token` | `<64-char secret — DO NOT share>` |
+| API port | `8080` (TLS via Let's Encrypt cert syncd by `/usr/local/sbin/sync-cert.sh`) |
+| SFTP port | `2022` |
+| Data volumes root | `/srv/pods/wings/volumes` |
+
+## Caddy (TLS + reverse proxy)
+
+| Key | Value |
+|---|---|
+| Config | `/etc/caddy/Caddyfile` |
+| Cloudflare token (for `*.bigcat.pw` DNS-01) | `/etc/caddy/cloudflare.env` → `CF_API_TOKEN=cfut_...` |
+| Access log | `/var/log/caddy/pods/access.log` (rotated 50MB × 4) |
+| Per-pod includes | `/etc/caddy/domains/<slug>.caddy` (regenerable via `pods-ml-domain`) |
+| Wildcard cert | Renewed by Caddy via Cloudflare token; staging fallback in same dir |
+
+## Cloudflare
+
+| Key | Value |
+|---|---|
+| Zone | `bigcat.pw` |
+| Account email | `<the email on the CF account>` |
+| API token name | `pods-ml-caddy-dns01` |
+| API token value | `<cfut_… — DNS edit scoped to bigcat.pw>` |
+| DNS proxy mode | **DNS only (gray cloud)** — required for the wildcard cert |
+
+## FuelBorn frontend (Next.js)
+
+| Key | Value |
+|---|---|
+| Service | `pods-ml-frontend.service` |
+| Env file | `/srv/pods/frontend/.env.local` (mode 0640) |
+| `PELICAN_URL` | `https://<fqdn>` |
+| `PELICAN_API_KEY` | `<48-char Pelican application API token>` |
+| `PELICAN_USER_ID` | `1` (the admin Pelican user that owns API operations) |
+| `PELICAN_NODE_ID` | `1` (legacy single-node fallback) |
+| `PELICAN_NODE_IDS` | `1,2` (load-distributed deploys) or `1` to pin to node 1 only |
+| `PELICAN_NODE_TAILSCALE_IPS` | `2:100.92.124.106` — node id → tailnet IP map for `execInPod()` |
+| `PODS_NODE_SSH_USER` | `podsadmin` (the user `execInPod` SSHes as for remote nodes) |
+| `PELICAN_HERMES_EGG_ID` | `2` (egg ID after import) |
+| `PELICAN_HERMES_IMAGE` | `pods-ml/sandbox-ubuntu:1.0` |
+| `SESSION_SECRET` | `<64-char hex — cookie signer>` |
+| `OAUTH_BASE_URL` | `https://app.pods.ml` (callbacks + cookie Domain derive from here) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | from Google Cloud Console |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | from GitHub OAuth App |
+| `RESEND` | Resend key for **auth + billing** emails (`hello@pods.ml`) |
+| `RESEND_API_KEY` | Resend key for **agent** emails (`<slug>@inbox.bigcat.pw`) |
+| `RESEND_WEBHOOK_SECRET` | Svix HMAC for inbound `email.received` |
+| `AUTH_FROM_EMAIL` | `pods.ml <hello@pods.ml>` |
+| `BILLING_FROM_EMAIL` | `pods.ml billing <billing@pods.ml>` |
+| `BOOTSTRAP_ADMIN_EMAIL` | seed admin user on first boot |
+| `INTERNAL_RECONCILE_TOKEN` | secret for `/api/internal/*` cron endpoints |
+| `INVOICE_KEY_ENCRYPTION_KEY` | AES key for invoice line-item encryption |
+| `SOLANA_CLUSTER` / `SOLANA_RPC_URL` / `SOLANA_TREASURY_ADDRESS` | wallet sign-in / payments |
+| `NODE_ENV` | `production` |
+| `PODS_DOMAIN_ROOT` | `bigcat.pw` (defaults to this if unset) |
+| `PODS_PUBLIC_HOST` | `app.pods.ml` (used in `EMAIL_OUTBOUND_PROXY` for new pods) |
+| `EMAIL_DOMAIN` | `inbox.bigcat.pw` |
+| `PODS_DB_PATH` | `/srv/pods/frontend/data/pods.db` |
+
+## SQLite (FuelBorn user data)
+
+| Key | Value |
+|---|---|
+| File | `/srv/pods/frontend/data/pods.db` (better-sqlite3 WAL) |
+| Tables | `users`, `pod_metrics`, `pod_domains` |
+| Backups | none yet — see roadmap |
+
+## Other knobs
+
+| Key | Value |
+|---|---|
+| `pods-ml-domain` sudo helper | `/usr/local/sbin/pods-ml-domain` (root:root 0755) |
+| Sudoers grant | `/etc/sudoers.d/pods-ml-domain` (`podsadmin ALL=(root) NOPASSWD: /usr/local/sbin/pods-ml-domain`) |
+| Caddy logs ACL | `setfacl g:podsadmin:r /var/log/caddy/pods/access.log` (so the frontend can tail) |
+| `pelican_nw` docker network (node 1) | `172.18.0.0/16` (bridge driver) |
+| `pelican_nw` docker network (node 2) | `172.21.0.0/16` (separate range for cross-node routing) |
+| Node 1 → Node 2 SSH key | `/home/podsadmin/.ssh/id_ed25519` (used by `execInPod()` for remote pods) |
+
+---
+
+## Recovery checklist (if the VM dies)
+
+1. `bash infra/azure-provision.sh` — re-create VM with same hostname.
+2. `bash infra/bootstrap.sh` on the new VM — installs Docker, MariaDB, Pelican, Wings, Caddy.
+3. **Restore from backup** (TODO — not yet implemented; pod data lives on `/srv/pods/`).
+4. Reinstall `/etc/pelican/config.yml` and `/srv/pods/frontend/.env.local` from this file.
+5. Reinstall `/etc/caddy/cloudflare.env` from this file.
+6. Rebuild Caddy if needed (xcaddy + `caddy-dns/cloudflare` plugin — see `infra/INFRA.md`).
+7. `php artisan p:user:make` to recreate the admin (or restore the SQL dump).

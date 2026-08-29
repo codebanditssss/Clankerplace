@@ -1,0 +1,4 @@
+# Allow the frontend service account to manage per-pod Caddy includes
+# without an interactive sudo prompt. Locked to the single helper script;
+# all argument validation happens inside the script.
+podsadmin ALL=(root) NOPASSWD: /usr/local/sbin/pods-ml-domain

@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * FuelBorn — landing  (dark mode)
+ *
+ * Dark-native editorial: warm-ink canvas (#0E0D0B), bone-white foreground,
+ * cool graphite hairlines. Same color system as before — 11-step neutral
+ * scale + functional signal colors — but the scale is *inverted* so that
+ *
+ *    bg-neutral-950   = canvas (near-black, warm ink)
+ *    bg-neutral-900   = surface card
+ *    bg-neutral-800   = elevated surface
+ *    text-neutral-50  = display text (bone)
+ *    text-neutral-400 = body / muted text
+ *
+ * Components keep their semantic intent (`bg-background`, `text-muted`,
+ * `border-hairline`) and inherit the dark values automatically.
+ *
+ * One pop per section, always signal-orange #FF6A2C, used for:
+ *   - the period in `FuelBorn`
+ *   - one word in the hero headline
+ *   - the featured Hermes tile
+ *   - the "Ready." in the footer slab
+ * --------------------------------------------------------------------------- */
+
+@theme inline {
+  /* ----- Warm neutral scale (50 = bone, 950 = warm ink) ----- */
+  --color-neutral-50:  #F4F1EA;   /* display text                 */
+  --color-neutral-100: #E5E1D6;   /* secondary text on dark cards */
+  --color-neutral-200: #B8B3A6;   /* muted heading                */
+  --color-neutral-300: #8A8579;
+  --color-neutral-400: #5F5B52;   /* body/muted                   */
+  --color-neutral-500: #403D37;
+  --color-neutral-600: #2E2C27;   /* card border subtle           */
+  --color-neutral-700: #232220;   /* elevated card surface        */
+  --color-neutral-800: #1A1916;   /* card                         */
+  --color-neutral-900: #141311;   /* deep card / panel            */
+  --color-neutral-950: #0B0A09;   /* canvas (warm ink)            */
+
+  /* ----- Signal colors (functional only) ----- */
+  --color-signal:        #FF6A2C; /* primary pop                  */
+  --color-signal-soft:   #3A1E10; /* tinted bg on dark (~10% mix) */
+  --color-live:          #3DD68C; /* "live" / healthy             */
+  --color-live-soft:     #112A1E;
+  --color-link:          #6F94F0;
+  --color-deploying:     #E8A33D;
+  --color-deploying-soft:#2A2010;
+  --color-error:         #E26451;
+  --color-error-soft:    #2A1612;
+
+  /* ----- Semantic tokens (used by components) ----- */
+  --color-background:   #0B0A09;                        /* canvas       */
+  --color-foreground:   var(--color-neutral-50);        /* bone text    */
+  --color-surface:      var(--color-neutral-900);
+  --color-surface-2:    var(--color-neutral-800);
+  --color-muted:        var(--color-neutral-300);
+  --color-subtle:       var(--color-neutral-400);
+  --color-hairline:     rgba(244, 241, 234, 0.08);      /* low-α bone   */
+  --color-rule:         rgba(244, 241, 234, 0.16);
+
+  /* ----- Fonts ----- */
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /* ----- Radii ----- */
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-hairline);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  ::selection {
+    background: var(--color-signal);
+    color: #fff;
+  }
+
+  /* Tabular figures. */
+  .tabular {
+    font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Display type — extreme size + tight tracking. */
+  .display {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+  }
+
+  /* Editorial italic accent. */
+  .editorial-italic {
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  /* Micro-label: mono uppercase tracked, used for section eyebrows. */
+  .micro {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-muted);
+  }
+
+  /* Hairline — single-px divider in current hairline color. */
+  .hairline {
+    border: 0;
+    height: 1px;
+    background: var(--color-hairline);
+  }
+
+  /* Fine grid texture for backgrounds. Uses currentColor so each block
+     can set its own intensity via `text-*` + low opacity. */
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, currentColor 1px, transparent 1px),
+      linear-gradient(to bottom, currentColor 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+  }
+
+  /* Diagonal hatch — used on signal-orange accent block. */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.15) 0 1px,
+      transparent 1px 6px
+    );
+  }
+
+  /* Soft halo behind the hero — radial glow in the warm-amber family. */
+  .halo-hero {
+    background:
+      radial-gradient(60% 70% at 30% 25%, rgba(255, 106, 44, 0.10), transparent 65%),
+      radial-gradient(45% 60% at 80% 90%, rgba(111, 148, 240, 0.08), transparent 60%);
+  }
+
+  /* Blinking cursor. */
+  @keyframes blink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  .caret::after {
+    content: "▍";
+    display: inline-block;
+    margin-left: 2px;
+    animation: blink 1s steps(1) infinite;
+    color: var(--color-signal);
+  }
+
+  /* Marquee. */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .marquee-track {
+    animation: marquee 45s linear infinite;
+  }
+}

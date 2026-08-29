@@ -1,0 +1,165 @@
+#!/bin/bash
+# pods-ml-domain — helper that writes/removes per-domain Caddy includes
+# and reloads Caddy. Called by the Next.js frontend via sudo NOPASSWD
+# so the API route doesn't need root for the whole process.
+#
+# Inputs are strictly validated — no shell-quoting tricks, no path
+# traversal, no arbitrary reverse_proxy targets.
+set -euo pipefail
+DOMAIN_DIR=/etc/caddy/domains
+LOG_DIR=/var/log/caddy/pods
+DOMAIN_ROOT=${PODS_DOMAIN_ROOT:-bigcat.pw}
+
+# Ensure the shared per-pod access log dir exists. Owned by caddy:podsadmin
+# so caddy can write the rotating access.log and the Next.js frontend
+# (running as podsadmin) can read it for the webhook events inspector.
+ensure_log_dir() {
+  if [[ ! -d $LOG_DIR ]]; then
+    install -d -m 0750 -o caddy -g podsadmin "$LOG_DIR"
+  fi
+}
+
+usage() {
+  echo "usage: $0 add <slug> <ip> <port>             (single-port — user-added domain)" >&2
+  echo "       $0 add-multi <slug> <ip>              (full Hermes path-routed include)" >&2
+  echo "       $0 add-multi-remote <slug> <tnet-ip>  (proxy to a sibling node's tailnet IP)" >&2
+  echo "       $0 remove <slug>" >&2
+  exit 2
+}
+
+[[ $# -ge 2 ]] || usage
+ACTION=$1
+SLUG=$2
+
+# slug: lowercase alnum + dashes, 3-63 chars. Matches DNS label rules.
+[[ $SLUG =~ ^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$ ]] || { echo "bad slug" >&2; exit 1; }
+
+case "$ACTION" in
+  add)
+    [[ $# -eq 4 ]] || usage
+    IP=$3
+    PORT=$4
+    # Only allow internal docker-bridge IPs (172.16.0.0/12) so nobody can
+    # point a domain at arbitrary internet hosts.
+    [[ $IP =~ ^172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || { echo "bad ip (must be docker-bridge 172.16/12)" >&2; exit 1; }
+    [[ $PORT =~ ^[0-9]+$ ]] || { echo "bad port" >&2; exit 1; }
+    (( PORT >= 1 && PORT <= 65535 )) || { echo "port out of range" >&2; exit 1; }
+
+    install -d -m 0755 -o root -g caddy "$DOMAIN_DIR"
+    ensure_log_dir
+    cat > "$DOMAIN_DIR/$SLUG.caddy" <<F
+@$SLUG host $SLUG.$DOMAIN_ROOT
+handle @$SLUG {
+	reverse_proxy $IP:$PORT
+}
+F
+    chmod 0644 "$DOMAIN_DIR/$SLUG.caddy"
+    systemctl reload caddy
+    echo "ok"
+    ;;
+  add-multi)
+    # Path-routed include for the auto-domain on every Hermes pod.
+    # Front-door at <slug>.<root>; well-known Hermes platform-adapter ports
+    # fan out by path so a single subdomain serves every webhook:
+    #   /v1/*         → 8642  (OpenAI-compatible API)
+    #   /webhooks/*   → 8644  (generic webhook adapter — Stripe, GitHub, custom)
+    #   /telegram/*   → 8443  (Telegram webhook)
+    #   /msgraph/*    → 8646  (Microsoft Graph webhook)
+    #   /wecom/*      → 8645  (WeCom callback)
+    #   /feishu/*     → 8765  (Feishu webhook)
+    #   /bluebubbles/*→ 8649  (BlueBubbles webhook — overridden from default 8645)
+    #   /twilio/*     → 8643  (SMS — overridden from default 8080 to avoid user clash)
+    #   anything else → 8080  (user's web app, default Hermes web port)
+    # Ports are fixed in this script so the sudoers grant stays tight —
+    # the caller can't ask for arbitrary ports here.
+    [[ $# -eq 3 ]] || usage
+    IP=$3
+    [[ $IP =~ ^172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || { echo "bad ip (must be docker-bridge 172.16/12)" >&2; exit 1; }
+
+    install -d -m 0755 -o root -g caddy "$DOMAIN_DIR"
+    ensure_log_dir
+    cat > "$DOMAIN_DIR/$SLUG.caddy" <<F
+@$SLUG host $SLUG.$DOMAIN_ROOT
+handle @$SLUG {
+	# Hermes sms.py hardcodes /webhooks/twilio — route the specific
+	# Twilio prefix BEFORE the generic /webhooks/* rule below, since
+	# Caddy picks the first matching handle.
+	handle /webhooks/twilio* {
+		reverse_proxy $IP:8643
+	}
+	handle /webhooks/* {
+		reverse_proxy $IP:8644
+	}
+	handle /v1/* {
+		reverse_proxy $IP:8642
+	}
+	handle /telegram/* {
+		reverse_proxy $IP:8443
+	}
+	handle /msgraph/* {
+		reverse_proxy $IP:8646
+	}
+	handle /wecom/* {
+		reverse_proxy $IP:8645
+	}
+	handle /feishu/* {
+		reverse_proxy $IP:8765
+	}
+	handle /bluebubbles/* {
+		reverse_proxy $IP:8649
+	}
+	handle /line/* {
+		reverse_proxy $IP:8647
+	}
+	# Teams Bot Framework adapter listens on /api/messages — strip our
+	# /teams prefix so the request arrives at the right path inside.
+	handle_path /teams/* {
+		reverse_proxy $IP:3978
+	}
+	handle {
+		reverse_proxy $IP:8080
+	}
+}
+F
+    chmod 0644 "$DOMAIN_DIR/$SLUG.caddy"
+    systemctl reload caddy
+    echo "ok"
+    ;;
+  add-multi-remote)
+    # Used on the TLS-terminating node (node 1) when the pod actually lives
+    # on a sibling node. Writes a Caddy include that proxies the slug to
+    # the sibling's internal-Caddy listener on the tailnet — preserves the
+    # Host header so the inner Caddy can do its own slug routing locally.
+    # The sibling node's Caddy listens on :80 only on the tailnet IP.
+    [[ $# -eq 3 ]] || usage
+    TNET_IP=$3
+    # Tailnet IPs live in 100.64.0.0/10 (CGNAT range Tailscale uses).
+    [[ $TNET_IP =~ ^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}$ ]] \
+      || { echo "bad tailnet ip (must be 100.64.0.0/10)" >&2; exit 1; }
+
+    install -d -m 0755 -o root -g caddy "$DOMAIN_DIR"
+    ensure_log_dir
+    cat > "$DOMAIN_DIR/$SLUG.caddy" <<F
+@$SLUG host $SLUG.$DOMAIN_ROOT
+handle @$SLUG {
+	reverse_proxy $TNET_IP:80 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
+F
+    chmod 0644 "$DOMAIN_DIR/$SLUG.caddy"
+    systemctl reload caddy
+    echo "ok"
+    ;;
+  remove)
+    [[ $# -eq 2 ]] || usage
+    rm -f "$DOMAIN_DIR/$SLUG.caddy"
+    systemctl reload caddy
+    echo "ok"
+    ;;
+  *)
+    usage
+    ;;
+esac

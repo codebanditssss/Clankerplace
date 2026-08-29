@@ -1,0 +1,74 @@
+x-common:
+  panel:
+    &panel-environment
+    APP_URL: "${APP_URL:?APP_URL must be set, e.g. https://pods-ml-prototype.eastus.cloudapp.azure.com}"
+    LE_EMAIL: "${LE_EMAIL:?LE_EMAIL must be set for Let's Encrypt}"
+    APP_DEBUG: "false"
+    APP_ENV: "production"
+
+  mail:
+    &mail-environment
+    MAIL_DRIVER: "log"
+
+  database:
+    &db-environment
+    MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?must be set}"
+    MYSQL_PASSWORD: &db-password "${MYSQL_PASSWORD:?must be set}"
+    MYSQL_DATABASE: &db-database "panel"
+    MYSQL_USER: &db-username "pelican"
+
+services:
+  database:
+    image: mariadb:10.11
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - pelican-db:/var/lib/mysql
+    environment:
+      <<: *db-environment
+
+  cache:
+    image: redis:alpine
+    restart: always
+
+  panel:
+    image: ghcr.io/pelican-dev/panel:latest
+    restart: unless-stopped
+    networks:
+      - default
+    ports:
+      - "127.0.0.1:8000:80"
+    links:
+      - database
+      - cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - pelican-data:/pelican-data
+      - pelican-logs:/var/www/html/storage/logs
+    environment:
+      <<: [*panel-environment, *mail-environment]
+      XDG_DATA_HOME: /pelican-data
+      BEHIND_PROXY: "true"
+      TRUSTED_PROXIES: "127.0.0.1,172.17.0.1,172.18.0.1,172.20.0.1"
+      CACHE_STORE: "redis"
+      SESSION_DRIVER: "redis"
+      QUEUE_CONNECTION: "redis"
+      REDIS_HOST: "cache"
+      DB_CONNECTION: "mariadb"
+      DB_HOST: "database"
+      DB_PORT: "3306"
+      DB_DATABASE: *db-database
+      DB_USERNAME: *db-username
+      DB_PASSWORD: *db-password
+
+volumes:
+  pelican-data:
+  pelican-logs:
+  pelican-db:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+ * FuelBorn — dashboard (dark mode, editorial)
+ *
+ * Mirrors the landing site's warm-ink palette (#0B0A09 canvas, bone-white
+ * #F4F1EA text, signal-orange #FF6A2C accent) but keeps the dashboard's
+ * existing semantic token vocabulary (--color-bg, --color-fg, --color-acc-*)
+ * so the ~90 components that already reference `bg-bg`, `text-fg`,
+ * `border-border`, `acc-blue` etc. continue to compile without changes.
+ *
+ * Layer 1: design primitives (warm neutrals + functional signal colors)
+ * Layer 2: legacy dashboard tokens, rewired onto the new primitives
+ * Layer 3: editorial utilities (display, micro, tabular, hatch, grid-paper)
+ * --------------------------------------------------------------------------- */
+
+:root {
+  /* ----- Warm neutral scale (50 = bone, 950 = warm ink) ----- */
+  --neutral-50:  #F4F1EA;
+  --neutral-100: #E5E1D6;
+  --neutral-200: #B8B3A6;
+  --neutral-300: #8A8579;
+  --neutral-400: #5F5B52;
+  --neutral-500: #403D37;
+  --neutral-600: #2E2C27;
+  --neutral-700: #232220;
+  --neutral-800: #1A1916;
+  --neutral-900: #141311;
+  --neutral-950: #0B0A09;
+
+  /* ----- Signal colors (functional only) ----- */
+  --signal:         #FF6A2C;
+  --signal-soft:    #3A1E10;
+  --live:           #3DD68C;
+  --live-soft:      #112A1E;
+  --link:           #6F94F0;
+  --deploying:      #E8A33D;
+  --deploying-soft: #2A2010;
+  --error:          #E26451;
+  --error-soft:     #2A1612;
+
+  /* ----- Legacy dashboard tokens, rewired ----- */
+  --bg-pure: var(--neutral-950);          /* canvas */
+  --bg-1:    var(--neutral-900);
+  --bg-2:    var(--neutral-800);
+  --bg-3:    var(--neutral-700);
+  --bg-4:    #1F1E1B;
+  --bg-5:    #25231F;
+
+  --border-subtle: rgba(244, 241, 234, 0.06);
+  --border:        rgba(244, 241, 234, 0.10);
+  --border-strong: rgba(244, 241, 234, 0.18);
+  --border-focus:  rgba(244, 241, 234, 0.32);
+
+  /* Text scale — kept legible on the warm-ink canvas. Each tier was
+     bumped one step lighter (Jan 2026) after low-contrast complaints
+     on tab labels + auth placeholders. */
+  --text-quaternary: var(--neutral-400);
+  --text-tertiary:   var(--neutral-300);
+  --text-secondary:  var(--neutral-200);
+  --text-primary:    var(--neutral-100);
+  --text-pure:       var(--neutral-50);
+
+  /* Functional accents (mapped to signal colors) */
+  --acc-blue:        var(--link);
+  --acc-blue-soft:   rgba(111, 148, 240, 0.14);
+  --acc-green:       var(--live);
+  --acc-green-soft:  rgba(61, 214, 140, 0.14);
+  --acc-amber:       var(--deploying);
+  --acc-amber-soft:  rgba(232, 163, 61, 0.14);
+  --acc-red:         var(--error);
+  --acc-red-soft:    rgba(226, 100, 81, 0.14);
+  --acc-purple:      #C8A2FF;
+  --acc-purple-soft: rgba(200, 162, 255, 0.14);
+  --acc-signal:      var(--signal);
+  --acc-signal-soft: rgba(255, 106, 44, 0.14);
+
+  /* Elevation */
+  --shadow-card: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-pop:  0 0 0 1px var(--border-strong),
+                 0 16px 32px -8px rgb(0 0 0 / 0.6),
+                 0 4px 8px -2px rgb(0 0 0 / 0.4);
+
+  /* Hairline (matches landing) */
+  --hairline: rgba(244, 241, 234, 0.08);
+  --rule:     rgba(244, 241, 234, 0.16);
+}
+
+@theme inline {
+  /* Surface colors */
+  --color-bg:           var(--bg-pure);
+  --color-bg-1:         var(--bg-1);
+  --color-bg-2:         var(--bg-2);
+  --color-bg-3:         var(--bg-3);
+  --color-bg-4:         var(--bg-4);
+  --color-bg-5:         var(--bg-5);
+
+  /* Borders */
+  --color-border:        var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-hairline:      var(--hairline);
+  --color-rule:          var(--rule);
+
+  /* Foreground */
+  --color-fg:        var(--text-primary);
+  --color-fg-muted:  var(--text-secondary);
+  --color-fg-dim:    var(--text-tertiary);
+  --color-fg-faint:  var(--text-quaternary);
+  --color-fg-pure:   var(--text-pure);
+
+  /* Functional accents (legacy names) */
+  --color-acc-blue:    var(--acc-blue);
+  --color-acc-green:   var(--acc-green);
+  --color-acc-amber:   var(--acc-amber);
+  --color-acc-red:     var(--acc-red);
+  --color-acc-purple:  var(--acc-purple);
+  --color-acc-signal:  var(--acc-signal);
+
+  /* Signal colors (landing-parity names) */
+  --color-signal:        var(--signal);
+  --color-signal-soft:   var(--signal-soft);
+  --color-live:          var(--live);
+  --color-live-soft:     var(--live-soft);
+  --color-link:          var(--link);
+  --color-deploying:     var(--deploying);
+  --color-deploying-soft:var(--deploying-soft);
+  --color-error:         var(--error);
+  --color-error-soft:    var(--error-soft);
+
+  /* Editorial semantic aliases (landing-parity) */
+  --color-background:   var(--neutral-950);
+  --color-foreground:   var(--neutral-50);
+  --color-surface:      var(--neutral-900);
+  --color-surface-2:    var(--neutral-800);
+  --color-muted:        var(--neutral-300);
+  --color-subtle:       var(--neutral-400);
+
+  /* Warm neutral scale (so `bg-neutral-900` etc. work in components) */
+  --color-neutral-50:   var(--neutral-50);
+  --color-neutral-100:  var(--neutral-100);
+  --color-neutral-200:  var(--neutral-200);
+  --color-neutral-300:  var(--neutral-300);
+  --color-neutral-400:  var(--neutral-400);
+  --color-neutral-500:  var(--neutral-500);
+  --color-neutral-600:  var(--neutral-600);
+  --color-neutral-700:  var(--neutral-700);
+  --color-neutral-800:  var(--neutral-800);
+  --color-neutral-900:  var(--neutral-900);
+  --color-neutral-950:  var(--neutral-950);
+
+  /* Fonts */
+  --font-sans: "NumericOverride", var(--font-manrope);
+  --font-mono: "NumericOverride", var(--font-jetbrains-mono);
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+/* -------- Base -------- */
+
+/*
+ * Rubik Mono One restricted to digits + common numeric glyphs via
+ * unicode-range. Browsers compose this with the regular text font, so
+ * letters stay in Manrope / JetBrains Mono and only numerals (and the
+ * symbols typically adjacent to them — %, decimal point, comma, +, -, /,
+ * etc.) render in Rubik. Loaded from Google Fonts; the next/font
+ * --font-numeric variable is intentionally unused at runtime because we
+ * need a real @font-face with unicode-range, not a CSS variable swap.
+ */
+@font-face {
+  font-family: "NumericOverride";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/rubikmonoone/v18/UqyJK8kPP3hjw6ANTdfRk9YSN-8wRqQrc_j9.woff2) format("woff2");
+  unicode-range: U+0030-0039, U+002B, U+002D, U+002E, U+002C, U+0025, U+002F, U+003A, U+0023;
+}
+
+html,
+body {
+  background: var(--neutral-950);
+  color: var(--text-primary);
+  font-family: "NumericOverride", var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color-scheme: dark;
+}
+
+::selection {
+  background: var(--signal);
+  color: #fff;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 2px solid var(--neutral-950);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* -------- Editorial utilities (landing parity) -------- */
+
+/* Tabular figures */
+.tabular {
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'ss01' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Display type — large, tight tracking */
+.display {
+  font-family: "NumericOverride", var(--font-manrope), system-ui, sans-serif;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+}
+
+/* Editorial italic accent */
+.editorial-italic {
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* Micro-label: mono uppercase tracked */
+.micro {
+  font-family: "NumericOverride", var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--neutral-300);
+}
+
+/* Hairline divider */
+.hairline {
+  border: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Grid paper texture — uses currentColor so callers control intensity */
+.grid-paper {
+  background-image:
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to bottom, currentColor 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+/* Diagonal hatch — for signal accent blocks */
+.hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 0 1px,
+    transparent 1px 6px
+  );
+}
+
+/* Soft halo */
+.halo-hero {
+  background:
+    radial-gradient(60% 70% at 30% 25%, rgba(255, 106, 44, 0.10), transparent 65%),
+    radial-gradient(45% 60% at 80% 90%, rgba(111, 148, 240, 0.08), transparent 60%);
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: 2px;
+  animation: blink 1s steps(1) infinite;
+  color: var(--signal);
+}
+
+/* Marquee */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee 45s linear infinite;
+}
+
+/* -------- Legacy dashboard utilities -------- */
+
+/* Grid background — softer, warmer, removed glow */
+.pods-grid-bg {
+  background-image:
+    linear-gradient(var(--hairline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+
+/* No-op the legacy glow (kept for compat; signal handled per-section) */
+.pods-glow {
+  background: transparent;
+}
+
+/* xterm theme tweaks */
+.xterm .xterm-viewport {
+  background: transparent !important;
+}
+.xterm-screen {
+  font-feature-settings: normal;
+}
+
+/* cmdk dialog open animation */
+@keyframes pods-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.pods-fade-in {
+  animation: pods-fade-in 100ms ease-out;
+}
+
+/* Shared larger loader for long-running pod operations. */
+.pods-loader-frame {
+  --pods-loader-scale: 0.58;
+  position: relative;
+  display: inline-block;
+  width: calc(120px * var(--pods-loader-scale));
+  height: calc(150px * var(--pods-loader-scale));
+  flex: none;
+}
+
+.pods-loader {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 120px;
+  height: 150px;
+  margin-left: -60px;
+  transform: scale(var(--pods-loader-scale));
+  transform-origin: top center;
+}
+
+.pods-loader::before {
+  content: "";
+  position: absolute;
+  bottom: 30px;
+  left: 50px;
+  height: 30px;
+  width: 30px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: pods-loader-bounce 0.5s ease-in-out infinite alternate;
+}
+
+.pods-loader::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 7px;
+  width: 45px;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow:
+    0 5px 0 var(--neutral-100),
+    -35px 50px 0 var(--neutral-100),
+    -70px 95px 0 var(--neutral-100);
+  animation: pods-loader-step 1s ease-in-out infinite;
+}
+
+@keyframes pods-loader-bounce {
+  0% {
+    transform: scale(1, 0.7);
+  }
+  40% {
+    transform: scale(0.8, 1.2);
+  }
+  60% {
+    transform: scale(1, 1);
+  }
+  100% {
+    bottom: 140px;
+  }
+}
+
+@keyframes pods-loader-step {
+  0% {
+    box-shadow:
+      0 10px 0 rgb(0 0 0 / 0),
+      0 10px 0 var(--neutral-100),
+      -35px 50px 0 var(--neutral-100),
+      -70px 90px 0 var(--neutral-100);
+  }
+  100% {
+    box-shadow:
+      0 10px 0 var(--neutral-100),
+      -35px 50px 0 var(--neutral-100),
+      -70px 90px 0 var(--neutral-100),
+      -70px 90px 0 rgb(0 0 0 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pods-loader::before,
+  .pods-loader::after {
+    animation: none;
+  }
+
+  .pods-loader::before {
+    bottom: 84px;
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "_comment": "n8n pod type \u2014 installs n8n into a yolks node image so the container's uid (998) matches /home/container ownership. Avoids the EACCES that hits when using the official docker.n8n.io/n8nio/n8n image (which expects uid 1000).",
+  "meta": {
+    "version": "PLCN_v1",
+    "update_url": null
+  },
+  "exported_at": "2026-05-16T00:00:00+00:00",
+  "name": "n8n",
+  "author": "FuelBorn",
+  "description": "n8n workflow automation. The editor is served at the pod's auto-domain root. Modern n8n uses built-in user management: the first visitor creates the owner account (email + password) in-browser, then everyone logs in against it. Webhooks at /webhook/<path>. Persists to /home/container/.n8n.",
+  "features": null,
+  "docker_images": {
+    "Node 22": "ghcr.io/pelican-eggs/yolks:nodejs_22",
+    "Node 20": "ghcr.io/pelican-eggs/yolks:nodejs_20"
+  },
+  "file_denylist": [],
+  "startup": "/home/container/.n8n-start.sh",
+  "config": {
+    "files": {},
+    "startup": {
+      "done": "Editor is now accessible"
+    },
+    "logs": {},
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -eo pipefail\n\n# Install Node 22 (NodeSource binary tarball; faster than nodesource apt repo and works in the installer image without adding a repo). Then npm install -g n8n. Both go into /mnt/server so they survive into the runtime container at /home/container.\napt-get update >/dev/null\napt-get install -y --no-install-recommends curl ca-certificates xz-utils python3 build-essential >/dev/null 2>&1\n\nNODE_VER=v22.11.0\nNODE_ARCH=linux-x64\necho \"==> Installing Node $NODE_VER into /mnt/server/.node\"\nmkdir -p /mnt/server/.node /mnt/server/.n8n /mnt/server/.npm-global\ncd /mnt/server/.node\ncurl -fsSL \"https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-$NODE_ARCH.tar.xz\" | tar -xJ --strip-components=1\nexport PATH=/mnt/server/.node/bin:/mnt/server/.npm-global/bin:$PATH\nexport HOME=/mnt/server\nexport npm_config_prefix=/mnt/server/.npm-global\nnode --version\nnpm --version\n\necho '==> Installing n8n via npm (3-5 minutes - first install is heavy)'\nnpm install -g --no-audit --no-fund n8n 2>&1 | tail -25\necho '==> Verifying'\nls -la /mnt/server/.npm-global/bin/n8n\nls -la /mnt/server/.node/bin/node\n\n# Bake the encryption key on first install so credentials survive restarts.\nif [ ! -f /mnt/server/.n8n/config ] && [ -n \"${N8N_ENCRYPTION_KEY:-}\" ]; then\n  cat > /mnt/server/.n8n/config <<EOF\n{\n  \"encryptionKey\": \"${N8N_ENCRYPTION_KEY}\"\n}\nEOF\n  chmod 600 /mnt/server/.n8n/config\nfi\n\n# Drop a startup wrapper so we do not have to keep the full env in the\n# egg startup field.\ncat > /mnt/server/.n8n-start.sh <<'STARTSH'\n#!/bin/bash\nset -e\nexport HOME=/home/container\nexport N8N_USER_FOLDER=/home/container/.n8n\nexport PATH=/home/container/.node/bin:/home/container/.npm-global/bin:$PATH\n# Internal serving: plain HTTP on :5678, bound to all interfaces. HTTPS is\n# terminated by Caddy at the pod's auto-domain. The public URL (used for\n# login redirects, the editor's absolute links and webhook URLs) is wired\n# in post-deploy via /home/container/.n8n/proxy.env once the subdomain is\n# known. Modern n8n uses built-in user management (owner-account setup on\n# first visit) - no N8N_BASIC_AUTH_* here.\nexport N8N_PROTOCOL=\"${N8N_PROTOCOL:-http}\"\nexport N8N_PORT=\"${N8N_PORT:-5678}\"\nexport N8N_LISTEN_ADDRESS=\"${N8N_LISTEN_ADDRESS:-0.0.0.0}\"\nexport N8N_HOST=\"${N8N_HOST:-localhost}\"\nexport N8N_SECURE_COOKIE=\"${N8N_SECURE_COOKIE:-true}\"\nexport N8N_DIAGNOSTICS_ENABLED=\"${N8N_DIAGNOSTICS_ENABLED:-false}\"\nexport EXECUTIONS_DATA_PRUNE=\"${EXECUTIONS_DATA_PRUNE:-true}\"\nexport EXECUTIONS_DATA_MAX_AGE=\"${EXECUTIONS_DATA_MAX_AGE:-168}\"\nexport N8N_RUNNERS_ENABLED=true\nmkdir -p \"$N8N_USER_FOLDER\"\n# Public-URL overrides written by the frontend after the auto-domain\n# exists (N8N_HOST / N8N_EDITOR_BASE_URL / WEBHOOK_URL / N8N_PROXY_HOPS).\n[ -f /home/container/.n8n/proxy.env ] && . /home/container/.n8n/proxy.env\ncd /home/container\nexec /home/container/.node/bin/node /home/container/.npm-global/bin/n8n start\nSTARTSH\nchmod +x /mnt/server/.n8n-start.sh\n\necho '==> n8n install complete'\n",
+      "container": "ghcr.io/pelican-eggs/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Public host",
+      "description": "Public hostname n8n believes it is serving. The frontend sets this to <slug>.bigcat.pw post-deploy.",
+      "env_variable": "N8N_HOST",
+      "default_value": "localhost",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:255"
+    },
+    {
+      "name": "Webhook base URL",
+      "description": "Public HTTPS URL n8n prints on webhook nodes. Set to the auto-domain post-deploy.",
+      "env_variable": "WEBHOOK_URL",
+      "default_value": "https://localhost/",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:255"
+    },
+    {
+      "name": "Protocol",
+      "description": "HTTPS terminates at Caddy; n8n itself serves HTTP.",
+      "env_variable": "N8N_PROTOCOL",
+      "default_value": "http",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|in:http,https"
+    },
+    {
+      "name": "Listen port",
+      "description": "Port n8n binds inside the container. Caddy routes <slug>.bigcat.pw root -> :5678.",
+      "env_variable": "N8N_PORT",
+      "default_value": "5678",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|integer|between:1024,65535"
+    },
+    {
+      "name": "Encryption key",
+      "description": "32-char encryption key for stored credentials. Set at deploy time; do not change.",
+      "env_variable": "N8N_ENCRYPTION_KEY",
+      "default_value": "",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|min:24|max:64"
+    },
+    {
+      "name": "Diagnostics",
+      "description": "Disable n8n's outbound diagnostics ping.",
+      "env_variable": "N8N_DIAGNOSTICS_ENABLED",
+      "default_value": "false",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|in:true,false"
+    },
+    {
+      "name": "Execution data retention (hours)",
+      "description": "How long to keep execution traces. Defaults to 7 days.",
+      "env_variable": "EXECUTIONS_DATA_MAX_AGE",
+      "default_value": "168",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|between:1,8760"
+    },
+    {
+      "name": "Prune execution data",
+      "description": "Auto-delete old execution rows.",
+      "env_variable": "EXECUTIONS_DATA_PRUNE",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|in:true,false"
+    },
+    {
+      "name": "Editor base URL",
+      "description": "Public URL where users reach the editor + login. Set to the auto-domain post-deploy.",
+      "env_variable": "N8N_EDITOR_BASE_URL",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:255"
+    },
+    {
+      "name": "Reverse-proxy hops",
+      "description": "Number of reverse proxies in front of n8n (Caddy = 1). Lets n8n trust X-Forwarded-* for correct cookies/redirects.",
+      "env_variable": "N8N_PROXY_HOPS",
+      "default_value": "1",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|integer|between:0,10"
+    },
+    {
+      "name": "Listen address",
+      "description": "IP n8n binds inside the container.",
+      "env_variable": "N8N_LISTEN_ADDRESS",
+      "default_value": "0.0.0.0",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|string|max:64"
+    },
+    {
+      "name": "Secure cookie",
+      "description": "Send the auth cookie only over HTTPS. Safe because access is via Caddy TLS.",
+      "env_variable": "N8N_SECURE_COOKIE",
+      "default_value": "true",
+      "user_viewable": false,
+      "user_editable": false,
+      "rules": "required|in:true,false"
+    }
+  ]
+}
