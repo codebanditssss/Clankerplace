@@ -850,6 +850,43 @@ if (METER_TOKEN) {
   );
 }
 
+// ---------------------- FuelBorn lifecycle tick ----------------------
+// FuelBorn uses its own FUEL ledger and must never be charged by the
+// legacy dollar meter above. This faster loop burns FUEL and drains the
+// retryable Pelican stop/start outbox so death and revival feel immediate.
+const FUELBORN_INTERVAL_MS = 5_000;
+let _fuelbornInFlight = false;
+async function tickFuelborn() {
+  if (_fuelbornInFlight || !METER_TOKEN) return;
+  _fuelbornInFlight = true;
+  try {
+    const res = await fetch(`http://127.0.0.1:${PORT}/api/internal/fuelborn`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-token": METER_TOKEN,
+      },
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(`[fuelborn] tick HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.warn(`[fuelborn] tick failed: ${err?.message || err}`);
+  } finally {
+    _fuelbornInFlight = false;
+  }
+}
+if (METER_TOKEN) {
+  setTimeout(tickFuelborn, 15_000);
+  setInterval(tickFuelborn, FUELBORN_INTERVAL_MS);
+} else {
+  console.warn(
+    "[fuelborn] INTERNAL_METER_TOKEN (or INTERNAL_RECONCILE_TOKEN) not set — lifecycle tick is disabled",
+  );
+}
+
 // ---------------------- Pelican ↔ meter reconciliation ----------------
 // Every 5 minutes, cross-check our pod_meter_state against Pelican's
 // /servers list to catch:

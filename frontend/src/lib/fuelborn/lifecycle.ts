@@ -160,7 +160,8 @@ export function markLifecycleEffectCompleted(
 
     db.prepare(
       `UPDATE fuel_lifecycle_effects
-          SET status = 'completed', completed_at = ?, attempts = attempts + 1
+          SET status = 'completed', completed_at = ?, attempts = attempts + 1,
+              last_error = NULL
         WHERE id = ?`,
     ).run(nowSeconds, effect.id);
     if (effect.kind === "power_start") {
@@ -177,6 +178,29 @@ export function markLifecycleEffectCompleted(
     }
   });
   complete();
+}
+
+export function recordLifecycleEffectFailure(
+  effectId: number,
+  error: unknown,
+): void {
+  requirePositiveInteger(effectId, "effect id");
+  const message = error instanceof Error ? error.message : String(error);
+  const result = db
+    .prepare(
+      `UPDATE fuel_lifecycle_effects
+          SET attempts = attempts + 1, last_error = ?
+        WHERE id = ? AND status = 'pending'`,
+    )
+    .run(message.slice(0, 1_000), effectId);
+  if (result.changes === 0) {
+    const effect = db
+      .prepare<[number], Pick<FuelLifecycleEffectRow, "status">>(
+        `SELECT status FROM fuel_lifecycle_effects WHERE id = ?`,
+      )
+      .get(effectId);
+    if (!effect) throw new Error("lifecycle effect not found");
+  }
 }
 
 function tickAgent(agentId: string, nowSeconds: number): FuelTickResult {

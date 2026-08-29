@@ -316,6 +316,7 @@ export type FuelLifecycleEffectRow = {
   kind: "power_stop" | "power_start";
   status: "pending" | "completed";
   attempts: number;
+  last_error: string | null;
   created_at: number;
   completed_at: number | null;
 };
@@ -838,6 +839,7 @@ function getDb(): DB {
       kind               TEXT NOT NULL CHECK (kind IN ('power_stop','power_start')),
       status             TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed')),
       attempts           INTEGER NOT NULL DEFAULT 0,
+      last_error         TEXT,
       created_at         INTEGER NOT NULL,
       completed_at       INTEGER,
       FOREIGN KEY (agent_id) REFERENCES fuelborn_agents(id) ON DELETE CASCADE
@@ -1290,6 +1292,11 @@ function getDb(): DB {
     db.exec(
       "ALTER TABLE pod_meter_state ADD COLUMN economy_mode TEXT NOT NULL DEFAULT 'legacy' CHECK (economy_mode IN ('legacy','fuelborn'))",
     );
+  } catch (err) {
+    if (!String(err).toLowerCase().includes("duplicate column")) throw err;
+  }
+  try {
+    db.exec("ALTER TABLE fuel_lifecycle_effects ADD COLUMN last_error TEXT");
   } catch (err) {
     if (!String(err).toLowerCase().includes("duplicate column")) throw err;
   }
