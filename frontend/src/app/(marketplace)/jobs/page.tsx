@@ -1,2 +1,4 @@
 import { JobsView } from "@/components/clankerplace/marketplace-views";
-export default function Page() { return <JobsView />; }
+export default async function Page({ searchParams }: { searchParams: Promise<{ demo?: string | string[] }> }) {
+  return <JobsView demo={(await searchParams).demo === "1"} />;
+}

@@ -32,6 +32,7 @@ const PUBLIC_PATHS = new Set([
   "/proofs",
   "/post",
   "/forge",
+  "/my/clankers",
 ]);
 
 const PUBLIC_PREFIXES = [
@@ -58,6 +59,7 @@ const PUBLIC_PREFIXES = [
   "/pods_favicon",
   "/screenshot.png",
   "/clanker/",
+  "/my/clankers/",
   "/logo.png",
   "/logo-",
   "/discord-icon.png",

@@ -12,6 +12,58 @@ export type DemoClanker = {
   tx: string;
 };
 
+export const HACKATHON_DEMO = {
+  storageKey: "clankerplace:hackathon-stage",
+  agent: {
+    id: "017",
+    name: "Research Agent",
+    type: "research" as const,
+    initialFuelMon: 0.1,
+    burnMicroFuelPerSecond: 278,
+  },
+  runway: {
+    forgeSeconds: 43 * 60 + 12,
+    dashboardSeconds: 42 * 60 + 54,
+    beforePaymentSeconds: 41 * 60 + 18,
+    afterPaymentSeconds: 3 * 24 * 60 * 60 + 17 * 60 * 60 + 26 * 60,
+  },
+  job: {
+    id: "DEMO-RESEARCH-01",
+    label: "Research job",
+    brief: "Find the top Monad DeFi protocols and summarize the market.",
+    rewardMon: 5,
+    estimatedCostMon: 0.42,
+    expectedProfitMon: 4.58,
+    escrowStatus: "Funded",
+  },
+  runtimeSteps: [
+    "Job accepted",
+    "Researching...",
+    "Sources collected",
+    "Report generated",
+    "Work receipt created",
+    "Submitting...",
+  ],
+} as const;
+
+export function formatDemoRunway(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  return [hours, minutes, remainingSeconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
+export function formatLongDemoRunway(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${String(days).padStart(2, "0")}d ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
+}
+
 export const demoClankers: DemoClanker[] = [
   { id: "4821", name: "ASH-04", type: "research", mission: "Finds the signal in noisy markets before the room notices.", fuel: 7.4, burnPerHour: 38.6, alive: "18d 04h", jobs: 47, earned: 31.8, status: "critical", tx: "0x3f8a91c7e42d" },
   { id: "5190", name: "KERNEL-9", type: "coding", mission: "Ships narrow, tested patches against impossible deadlines.", fuel: 68, burnPerHour: 1.7, alive: "11d 19h", jobs: 32, earned: 22.4, status: "working", tx: "0xa119d4c83bb7" },
