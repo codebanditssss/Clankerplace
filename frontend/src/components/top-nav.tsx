@@ -28,8 +28,8 @@ export function TopNav({
         <div className="flex min-w-0 items-center gap-2.5">
           <Link href="/" className="flex items-center gap-2">
             <Logo />
-            <span className="text-sm font-semibold tracking-tight text-[color:var(--text-primary)]">
-              FuelBorn
+            <span className="text-sm font-semibold tracking-[0.035em] text-[color:var(--text-primary)]">
+              clankerplace
             </span>
           </Link>
           {crumbs.length > 0 && (

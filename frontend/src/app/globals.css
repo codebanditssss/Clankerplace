@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./clankerplace.css";
 
 /* ---------------------------------------------------------------------------
  * FuelBorn — dashboard (dark mode, editorial)
@@ -16,28 +17,28 @@
 
 :root {
   /* ----- Warm neutral scale (50 = bone, 950 = warm ink) ----- */
-  --neutral-50:  #F4F1EA;
-  --neutral-100: #E5E1D6;
-  --neutral-200: #B8B3A6;
-  --neutral-300: #8A8579;
-  --neutral-400: #5F5B52;
-  --neutral-500: #403D37;
-  --neutral-600: #2E2C27;
-  --neutral-700: #232220;
-  --neutral-800: #1A1916;
-  --neutral-900: #141311;
-  --neutral-950: #0B0A09;
+  --neutral-50:  #FFFFFF;
+  --neutral-100: #F1F1F1;
+  --neutral-200: #D0D0D0;
+  --neutral-300: #999999;
+  --neutral-400: #686868;
+  --neutral-500: #474747;
+  --neutral-600: #303030;
+  --neutral-700: #222222;
+  --neutral-800: #141414;
+  --neutral-900: #080808;
+  --neutral-950: #000000;
 
   /* ----- Signal colors (functional only) ----- */
-  --signal:         #FF6A2C;
-  --signal-soft:    #3A1E10;
-  --live:           #3DD68C;
-  --live-soft:      #112A1E;
-  --link:           #6F94F0;
-  --deploying:      #E8A33D;
-  --deploying-soft: #2A2010;
-  --error:          #E26451;
-  --error-soft:     #2A1612;
+  --signal:         #7DE3FF;
+  --signal-soft:    #09232A;
+  --live:           #7DE3FF;
+  --live-soft:      #09232A;
+  --link:           #7DE3FF;
+  --deploying:      #B69CFF;
+  --deploying-soft: #201A30;
+  --error:          #FF6E5C;
+  --error-soft:     #2A1210;
 
   /* ----- Legacy dashboard tokens, rewired ----- */
   --bg-pure: var(--neutral-950);          /* canvas */
@@ -70,8 +71,8 @@
   --acc-amber-soft:  rgba(232, 163, 61, 0.14);
   --acc-red:         var(--error);
   --acc-red-soft:    rgba(226, 100, 81, 0.14);
-  --acc-purple:      #C8A2FF;
-  --acc-purple-soft: rgba(200, 162, 255, 0.14);
+  --acc-purple:      #B69CFF;
+  --acc-purple-soft: rgba(182, 156, 255, 0.14);
   --acc-signal:      var(--signal);
   --acc-signal-soft: rgba(255, 106, 44, 0.14);
 

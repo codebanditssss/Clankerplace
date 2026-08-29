@@ -151,3 +151,5 @@ frontend/data/pods.db-shm
 # Command Code agent state + learned taste preferences
 .commandcode/
 **/taste.md
+
+docs/

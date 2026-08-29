@@ -12,7 +12,7 @@ import {
 } from "@/lib/billing/plan-details";
 
 export const metadata = {
-  title: "Pricing - FuelBorn",
+  title: "Pricing - clankerplace",
   description:
     "Subscription plans for one-click AI-agent pods, automations, sandboxes, and game servers.",
 };

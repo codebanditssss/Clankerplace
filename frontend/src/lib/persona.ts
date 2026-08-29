@@ -13,7 +13,7 @@ const AGENTS_PATH = "/home/container/AGENTS.md";
 
 const SOUL_HEADER = "# Hermes Agent Persona";
 const AGENTS_BANNER =
-  "<!-- managed by FuelBorn — rewritten on every deploy; edits will be lost -->";
+  "<!-- managed by clankerplace — rewritten on every deploy; edits will be lost -->";
 
 // First-install SOUL.md ships with a help comment block. Treat it as
 // empty so users land in a clean textarea, not a wall of examples.
@@ -43,7 +43,7 @@ export function composeForgePersona(identity: {
     "",
     "## Identity",
     "",
-    `You are ${identity.name.trim()}, a FuelBorn autonomous agent.`,
+    `You are ${identity.name.trim()}, a clankerplace autonomous agent.`,
     "",
     "## Mission",
     "",
@@ -62,7 +62,7 @@ export function buildAgentsMd(emailAddress: string | null): string {
     "",
     "# Operating notes for this pod",
     "",
-    "Capabilities the FuelBorn platform has provisioned for you. Use these — do not reinvent them.",
+    "Capabilities the clankerplace platform has provisioned for you. Use these — do not reinvent them.",
     "",
     "## System environment & sudo (read before installing anything)",
     "",

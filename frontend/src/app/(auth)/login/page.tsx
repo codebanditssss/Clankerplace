@@ -86,7 +86,7 @@ function LoginPageInner() {
     <AuthShell
       mode="signin"
       title="Sign in"
-      subtitle="Manage your pods and connectors."
+      subtitle="Manage your Clankers, work, and fuel."
       switchHref="/signup"
       switchHrefLabel="Create one"
       switchPrefix="No account?"

@@ -1,10 +1,17 @@
 import "server-only";
 import Database, { type Database as DB } from "better-sqlite3";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { allowedAdminEmails } from "./admin-allowlist";
 
-const DB_PATH = process.env.PODS_DB_PATH ?? "./data/pods.db";
+// Vercel Functions have an ephemeral, read-only deployment filesystem and a
+// writable /tmp directory. This keeps the public demo renderable there; the
+// VM deployment should continue setting PODS_DB_PATH to persistent storage.
+const DB_PATH =
+  process.env.PODS_DB_PATH ??
+  (process.env.VERCEL === "1" || !existsSync("./data")
+    ? "/tmp/clankerplace-pods.db"
+    : "./data/pods.db");
 
 export type UserRow = {
   id: number;

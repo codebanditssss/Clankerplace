@@ -56,7 +56,7 @@ export function WhyPods() {
               <span className="size-2 shrink-0 bg-signal" aria-hidden />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-foreground">
-                  The FuelBorn thesis
+                  The clankerplace thesis
                 </span>
                 <span className="micro mt-1">north star, always</span>
               </div>

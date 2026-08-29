@@ -9,7 +9,7 @@ import { NotAdminError, requireAdmin } from "@/lib/admin";
 import { AdminShell } from "@/components/admin/admin-shell";
 
 export const metadata: Metadata = {
-  title: "FuelBorn admin",
+  title: "clankerplace admin",
   robots: { index: false, follow: false },
 };
 

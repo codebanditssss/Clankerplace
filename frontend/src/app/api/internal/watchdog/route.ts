@@ -27,7 +27,7 @@ export const runtime = "nodejs";
  */
 
 const FROM_EMAIL =
-  process.env.AUTH_FROM_EMAIL ?? "FuelBorn <onboarding@resend.dev>";
+  process.env.AUTH_FROM_EMAIL ?? "clankerplace <onboarding@resend.dev>";
 
 let running = false;
 
@@ -92,8 +92,8 @@ async function notify(opts: {
   const podUrl = `${process.env.FUELBORN_PUBLIC_URL ?? process.env.PODS_PUBLIC_URL ?? "http://localhost:3000"}/pods/${srv.identifier}`;
   const subject =
     kind === "warning"
-      ? `[FuelBorn] Your pod "${srv.name}" looks stuck at 100% CPU`
-      : `[FuelBorn] Your pod "${srv.name}" was suspended (CPU pinned ${Math.round(pinnedHours)}h)`;
+      ? `[clankerplace] Your pod "${srv.name}" looks stuck at 100% CPU`
+      : `[clankerplace] Your pod "${srv.name}" was suspended (CPU pinned ${Math.round(pinnedHours)}h)`;
   const body =
     kind === "warning"
       ? `Your pod "${srv.name}" (${srv.identifier}) has been running at or above ` +

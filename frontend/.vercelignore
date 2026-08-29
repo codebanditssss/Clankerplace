@@ -1,0 +1,7 @@
+.next
+.vercel
+data
+node_modules
+playwright-report
+test-results
+*.log

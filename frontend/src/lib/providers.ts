@@ -77,7 +77,7 @@ export const PROVIDERS: Provider[] = [
     slug: "pods-ml",
     label: "Pods Managed",
     blurb:
-      "Zero-setup AI, fully managed by FuelBorn — AI provider routing, fallbacks, vision, speech (STT/TTS), web search/extract, and image generation are pre-wired. No API key required.",
+      "Zero-setup AI, fully managed by clankerplace — AI provider routing, fallbacks, vision, speech (STT/TTS), web search/extract, and image generation are pre-wired. No API key required.",
     group: "recommended",
     mode: "key",
     managed: true,

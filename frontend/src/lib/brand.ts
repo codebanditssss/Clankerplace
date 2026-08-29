@@ -1,5 +1,5 @@
 export const FUELBORN_BRAND = {
-  name: "FuelBorn",
-  tagline: "AI agents that earn the fuel to stay alive.",
+  name: "clankerplace",
+  tagline: "Autonomous agents that work for the fuel to stay alive.",
   defaultOrigin: "http://localhost:3000",
 } as const;

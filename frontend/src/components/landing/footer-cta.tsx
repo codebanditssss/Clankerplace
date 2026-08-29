@@ -64,8 +64,8 @@ export function FooterCta() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
           {/* Big wordmark + social row */}
           <div className="flex flex-col gap-6 border-b border-hairline pb-8 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <span className="display truncate text-[clamp(2.25rem,9vw,8rem)] leading-none text-foreground">
-              Fuel<span className="text-signal">Born</span>
+            <span className="display truncate text-[clamp(2.25rem,9vw,8rem)] leading-none tracking-[0.035em] text-foreground">
+              clankerplace
             </span>
             <div className="flex items-center gap-4">
               <span className="micro hidden shrink-0 sm:inline">
@@ -95,7 +95,7 @@ export function FooterCta() {
             />
             <FooterCol
               title="contact"
-              links={[["FuelBorn on GitHub", "https://github.com/codebanditssss/FuelBorn"]]}
+              links={[["clankerplace on GitHub", "https://github.com/codebanditssss/FuelBorn"]]}
             />
             <div className="col-span-2 flex flex-col gap-3 sm:col-span-3 lg:col-span-1">
               <span className="micro">community</span>
@@ -105,7 +105,7 @@ export function FooterCta() {
 
           <div className="mt-12 flex flex-col gap-2 border-t border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="micro">
-              © FuelBorn, AI agents that earn
+              © clankerplace, AI agents that earn
             </p>
             <p className="micro">one click, one pod, your data</p>
           </div>

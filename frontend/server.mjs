@@ -198,7 +198,10 @@ function reapTaggedSession(nodeId, containerName, termId) {
 // real bug we want to catch at boot rather than at first-request time.
 // The TS equivalent in src/lib/env.ts is the canonical list and is
 // exercised by the unit tests.
-if (!DEV) {
+// PELICAN_DEV_STUB is an explicit local-demo escape hatch: it lets us exercise
+// the optimized frontend without pretending the laptop has the VM's Pelican,
+// billing, mail, and meter services. Never set it on the production VM.
+if (!DEV && process.env.PELICAN_DEV_STUB !== "1") {
   const productionRequired = [
     ["PELICAN_URL", "Pelican panel base URL"],
     ["PELICAN_API_KEY", "Pelican Application API key"],
@@ -365,7 +368,7 @@ async function onTerminalConnection(ws, req, uuidShort) {
   }
   if (srv.container.installed !== 1) {
     console.log(`[term] ${uuidShort} user=${user.email} — still installing`);
-    ws.send("\x1b[33m[FuelBorn] pod is still installing — terminal will activate when ready\x1b[0m\r\n");
+    ws.send("\x1b[33m[clankerplace] pod is still installing — terminal will activate when ready\x1b[0m\r\n");
     ws.close(4003, "still installing");
     return;
   }
@@ -375,7 +378,7 @@ async function onTerminalConnection(ws, req, uuidShort) {
   if (!runtime.running) {
     console.log(`[term] ${uuidShort} user=${user.email} - ${runtime.message}${runtime.raw ? ` (${runtime.raw})` : ""}`);
     try {
-      ws.send(`\r\n\x1b[33m[FuelBorn] ${runtime.message}\x1b[0m\r\n`);
+      ws.send(`\r\n\x1b[33m[clankerplace] ${runtime.message}\x1b[0m\r\n`);
     } catch {}
     ws.close(4006, "pod not running");
     return;
@@ -415,7 +418,7 @@ async function onTerminalConnection(ws, req, uuidShort) {
   if (inv.error) {
     console.log(`[term] ${uuidShort} user=${user.email} — ${inv.error}`);
     try {
-      ws.send(`\r\n\x1b[31m[FuelBorn] ${inv.error}\x1b[0m\r\n`);
+      ws.send(`\r\n\x1b[31m[clankerplace] ${inv.error}\x1b[0m\r\n`);
     } catch {}
     ws.close(4005, "node unreachable");
     return;
@@ -457,7 +460,7 @@ async function onTerminalConnection(ws, req, uuidShort) {
   term.onExit(({ exitCode, signal }) => {
     console.log(`[term] ${uuidShort} PTY exit code=${exitCode} signal=${signal}`);
     try {
-      ws.send(`\r\n\x1b[90m[FuelBorn] shell exited (${exitCode})\x1b[0m\r\n`);
+      ws.send(`\r\n\x1b[90m[clankerplace] shell exited (${exitCode})\x1b[0m\r\n`);
     } catch {}
     close();
   });
@@ -508,7 +511,7 @@ async function onWhatsappPair(ws, req, uuidShort) {
   const srv = await userOwnsServer(user.pelican_user_id, uuidShort);
   if (!srv) return ws.close(4004, "pod not found");
   if (srv.container.installed !== 1) {
-    ws.send("\x1b[33m[FuelBorn] pod is still installing\x1b[0m\r\n");
+    ws.send("\x1b[33m[clankerplace] pod is still installing\x1b[0m\r\n");
     return ws.close(4003, "still installing");
   }
 
@@ -516,7 +519,7 @@ async function onWhatsappPair(ws, req, uuidShort) {
   const runtime = await checkContainerRunning(srv.node, containerName);
   if (!runtime.running) {
     try {
-      ws.send(`\r\n\x1b[33m[FuelBorn] ${runtime.message}\x1b[0m\r\n`);
+      ws.send(`\r\n\x1b[33m[clankerplace] ${runtime.message}\x1b[0m\r\n`);
     } catch {}
     ws.close(4006, "pod not running");
     return;
@@ -542,8 +545,8 @@ async function onWhatsappPair(ws, req, uuidShort) {
     'if [ -f "$BAILEYS_MAIN" ]; then',
     '  : # already installed, fast-path',
     "else",
-    '  echo "[FuelBorn] installing whatsapp-bridge dependencies (first-time, ~60s)";',
-    '  (cd "$BR" && rm -rf node_modules package-lock.json && NODE_OPTIONS="--max-old-space-size=2048" npm install --silent --no-audit --no-fund --maxsockets=4) || { echo "[FuelBorn] npm install failed — out of memory? try stopping/restarting the pod"; exit 1; }',
+    '  echo "[clankerplace] installing whatsapp-bridge dependencies (first-time, ~60s)";',
+    '  (cd "$BR" && rm -rf node_modules package-lock.json && NODE_OPTIONS="--max-old-space-size=2048" npm install --silent --no-audit --no-fund --maxsockets=4) || { echo "[clankerplace] npm install failed — out of memory? try stopping/restarting the pod"; exit 1; }',
     "fi",
     "exec hermes whatsapp",
   ].join("\n");
@@ -566,7 +569,7 @@ async function onWhatsappPair(ws, req, uuidShort) {
   const inv = dockerInvocation(srv.node, dockerArgs, { interactive: true });
   if (inv.error) {
     try {
-      ws.send(`\r\n\x1b[31m[FuelBorn] ${inv.error}\x1b[0m\r\n`);
+      ws.send(`\r\n\x1b[31m[clankerplace] ${inv.error}\x1b[0m\r\n`);
     } catch {}
     ws.close(4005, "node unreachable");
     return;
@@ -596,7 +599,7 @@ async function onWhatsappPair(ws, req, uuidShort) {
   term.onExit(({ exitCode }) => {
     try {
       ws.send(
-        `\r\n\x1b[90m[FuelBorn] pairing wizard exited (${exitCode})\x1b[0m\r\n`,
+        `\r\n\x1b[90m[clankerplace] pairing wizard exited (${exitCode})\x1b[0m\r\n`,
       );
     } catch {}
     close();
@@ -1048,5 +1051,5 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[FuelBorn] ready on http://${HOST}:${PORT}`);
+  console.log(`[clankerplace] ready on http://${HOST}:${PORT}`);
 });

@@ -198,7 +198,7 @@ function SidebarBody({
           className="flex items-center gap-2 overflow-hidden text-foreground"
         >
           <Image
-            src="/logo-128.png"
+            src="/icon.svg"
             alt=""
             width={128}
             height={128}
@@ -213,9 +213,9 @@ function SidebarBody({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -6 }}
                 transition={{ duration: 0.15 }}
-                className="text-[15px] font-semibold tracking-tight text-foreground"
+                className="text-[15px] font-semibold tracking-[0.035em] text-foreground"
               >
-                Fuel<span className="text-signal">Born</span>
+                clankerplace
               </motion.span>
             ) : null}
           </AnimatePresence>

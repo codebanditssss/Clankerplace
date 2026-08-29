@@ -243,7 +243,7 @@ export default function PodConsole({
     try {
       saved = localStorage.getItem(STORAGE_KEY);
     } catch {}
-    term.writeln("\x1b[90m[FuelBorn] connecting to your pod…\x1b[0m");
+    term.writeln("\x1b[90m[clankerplace] connecting to your pod…\x1b[0m");
     if (saved && saved.length > 0) {
       bufferRef.current = saved;
       const CHUNK = 16_384;
@@ -252,7 +252,7 @@ export default function PodConsole({
         if (!termRef.current || offset >= saved!.length) {
           try {
             termRef.current?.write(
-              "\r\n\x1b[90m[FuelBorn] —— above: restored from previous session ——\x1b[0m\r\n",
+              "\r\n\x1b[90m[clankerplace] —— above: restored from previous session ——\x1b[0m\r\n",
             );
           } catch {}
           return;

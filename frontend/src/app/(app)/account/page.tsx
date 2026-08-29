@@ -32,7 +32,7 @@ export default async function AccountPage() {
         <Panel
           index="01"
           title="Profile"
-          description="How you appear across FuelBorn."
+          description="How you appear across clankerplace."
         >
           <div className="flex items-start gap-4 pb-5">
             <div
@@ -81,7 +81,7 @@ export default async function AccountPage() {
           <EmptyState
             icon={<Key className="h-5 w-5" />}
             title="No API keys"
-            description="The FuelBorn REST/CLI surface will let you script agent lifecycle once it's stable."
+            description="The clankerplace REST/CLI surface will let you script agent lifecycle once it's stable."
             action={
               <Button variant="secondary" size="sm" disabled>
                 <Key className="h-3 w-3" /> Create API key

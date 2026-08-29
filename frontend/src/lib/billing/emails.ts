@@ -18,10 +18,10 @@ import { FUELBORN_BRAND } from "../brand";
 const FROM_EMAIL =
   process.env.BILLING_FROM_EMAIL ??
   process.env.AUTH_FROM_EMAIL ??
-  "FuelBorn <onboarding@resend.dev>";
+  "clankerplace <onboarding@resend.dev>";
 // Env-driven so a rebrand only needs APP_NAME=NewName + restart.
 // Shared with auth-emails.ts via the same env var.
-const APP_NAME = process.env.APP_NAME ?? "FuelBorn";
+const APP_NAME = process.env.APP_NAME ?? "clankerplace";
 const APP_URL =
   process.env.FUELBORN_PUBLIC_URL ??
   process.env.PODS_PUBLIC_URL ??
@@ -34,7 +34,7 @@ function frameHtml(title: string, bodyHtml: string, footer?: string): string {
         <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#737373;">${APP_NAME}</div>
         <h1 style="margin:14px 0 6px;font-size:22px;font-weight:600;color:#fafafa;">${title}</h1>
         ${bodyHtml}
-        ${footer ?? `<p style="margin-top:28px;font-size:12px;color:#737373;line-height:1.6;">Manage credits at <a href="${APP_URL}/billing" style="color:#cccccc;">FuelBorn billing</a>.</p>`}
+        ${footer ?? `<p style="margin-top:28px;font-size:12px;color:#737373;line-height:1.6;">Manage credits at <a href="${APP_URL}/billing" style="color:#cccccc;">clankerplace billing</a>.</p>`}
       </td></tr>
     </table>
   </body></html>`;

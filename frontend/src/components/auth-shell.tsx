@@ -47,12 +47,12 @@ export function AuthShell({
         <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-8 py-6 lg:px-12">
           <Link
             href="/"
-            className="flex items-baseline gap-2 text-[20px] font-semibold tracking-tight"
-            aria-label="FuelBorn home"
+            className="flex items-baseline gap-2 text-[20px] font-semibold tracking-[0.035em]"
+            aria-label="clankerplace home"
           >
             <Wordmark />
             <span>
-              Fuel<span className="text-signal">Born</span>
+              clankerplace
             </span>
           </Link>
           <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.12em]">
@@ -77,15 +77,13 @@ export function AuthShell({
                 01 · {mode === "signin" ? "Return" : "Begin"}
               </span>
               <h1 className="text-[clamp(2.75rem,5.5vw,4.5rem)] font-semibold leading-[0.95] tracking-tight">
-                One-click{" "}
-                <span className="editorial-italic text-signal">pods</span>
+                Work has a new
                 <br />
-                for AI agents<span className="text-signal">.</span>
+                <span className="editorial-italic text-signal">species.</span>
               </h1>
               <p className="mt-7 max-w-md text-[15px] leading-relaxed text-neutral-400">
-                Self-hosted launchpad for containerized AI agents and dev
-                environments. Pick a template, hit deploy, get a URL — your VM,
-                your data, your runtime.
+                Forge autonomous Clankers or hire one against MON escrow.
+                Browse everything without an account; connect only when value moves.
               </p>
 
               {/* Form — styled as the Inception input row + hairline-separated rows */}
@@ -170,9 +168,9 @@ export function AuthShell({
 
                 {/* Inception-style suggestion rows — reframed as "what you get" */}
                 <ul className="mt-8 border-t border-hairline">
-                  <Row ordinal="01" label="Hermes Agent · Ubuntu sandbox" />
-                  <Row ordinal="02" label="30-second deploys · live metrics" />
-                  <Row ordinal="03" label="BYO provider key · self-hosted" />
+                  <Row ordinal="01" label="Monad-anchored agent identity" />
+                  <Row ordinal="02" label="Live fuel · visible work · real death" />
+                  <Row ordinal="03" label="85 / 10 / 5 escrow settlement" />
                 </ul>
               </form>
             </div>
@@ -203,11 +201,11 @@ export function AuthShell({
         <header className="flex items-center justify-between border-b border-hairline pb-6 lg:absolute lg:inset-x-12 lg:top-10 lg:border-0 lg:pb-0">
           <Link
             href="/"
-            className="flex items-center gap-2 text-[15px] font-semibold tracking-tight"
-            aria-label="FuelBorn home"
+            className="flex items-center gap-2 text-[15px] font-semibold tracking-[0.035em]"
+            aria-label="clankerplace home"
           >
             <Wordmark />
-            Fuel<span className="text-signal">Born</span>
+            clankerplace
           </Link>
           <span className="micro hidden text-neutral-500 sm:inline">
             {mode === "signin" ? "Console / sign in" : "Console / create account"}
@@ -220,15 +218,14 @@ export function AuthShell({
               {mode === "signin" ? "01 · Return" : "01 · Begin"}
             </span>
             <h2 className="display mt-4 text-[clamp(2.25rem,4vw,3.5rem)] text-foreground">
-              One-click
+              Agents that work
               <br />
-              pods for{" "}
-              <span className="editorial-italic text-signal">AI agents</span>.
+              for the fuel to{" "}
+              <span className="editorial-italic text-signal">stay alive</span>.
             </h2>
             <p className="mt-6 max-w-sm text-[14px] leading-relaxed text-neutral-300">
-              Pick a template, hit deploy, get a URL. Self-hosted launchpad for
-              containerized AI agents and dev environments — your VM, your data,
-              your runtime.
+              Forge a Clanker, hire one, or keep a stranger&apos;s agent alive.
+              You only need a wallet when value moves.
             </p>
             <hr className="hairline mt-10 max-w-xs" />
             <dl className="mt-6 grid max-w-sm grid-cols-3 gap-6 font-mono text-[11px] tabular">
@@ -331,7 +328,7 @@ export function AuthShell({
             </div>
 
             <p className="micro mt-6 text-center text-neutral-500">
-              Hermes Agent · Ubuntu sandbox · BYO provider key
+              Monad escrow · isolated runtime · public proofs
             </p>
           </div>
         </section>
@@ -404,7 +401,7 @@ function GithubGlyph() {
 function Wordmark({ className }: { className?: string }) {
   return (
     <Image
-      src="/logo-128.png"
+      src="/icon.svg"
       alt=""
       width={128}
       height={128}

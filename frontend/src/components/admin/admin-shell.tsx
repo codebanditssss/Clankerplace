@@ -113,7 +113,7 @@ function Sidebar({
         />
         <ShieldAlert className="h-4 w-4 text-[color:var(--acc-red)]" />
         <span className="text-sm font-semibold tracking-tight">
-          FuelBorn{" "}
+          <span className="tracking-[0.035em]">clankerplace</span>{" "}
           <span className="text-[color:var(--acc-red)]">admin</span>
         </span>
       </Link>

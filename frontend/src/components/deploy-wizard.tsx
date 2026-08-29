@@ -609,7 +609,7 @@ function ProviderStep({
                     </span>
                   </span>
                   <span className="mt-1 block text-[12px] leading-relaxed text-neutral-300">
-                    Managed by FuelBorn: AI provider routing, model fallbacks,
+                    Managed by clankerplace: AI provider routing, model fallbacks,
                     vision, image generation, web search/extract, and speech
                     tools are already wired into the pod.
                   </span>

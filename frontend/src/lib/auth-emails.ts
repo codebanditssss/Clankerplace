@@ -6,12 +6,12 @@ import "server-only";
 import { sendEmail } from "./resend";
 
 const FROM_EMAIL =
-  process.env.AUTH_FROM_EMAIL ?? "FuelBorn <onboarding@resend.dev>";
+  process.env.AUTH_FROM_EMAIL ?? "clankerplace <onboarding@resend.dev>";
 // APP_NAME shown in subject lines + email body (e.g. "your FuelBorn
 // verification code"). Env-driven so a future rebrand only needs an
 // env change, no code change. Defaults to "FuelBorn" matching the
 // from-address domain.
-const APP_NAME = process.env.APP_NAME ?? "FuelBorn";
+const APP_NAME = process.env.APP_NAME ?? "clankerplace";
 
 function codeBlockHtml(code: string): string {
   return `

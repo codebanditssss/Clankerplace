@@ -35,18 +35,18 @@ export function Topbar({
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2 text-foreground"
-          aria-label="FuelBorn home"
+          aria-label="clankerplace home"
         >
           <Image
-            src="/pods_favicon_tight_512.png"
+            src="/icon.svg"
             alt=""
             width={128}
             height={128}
             priority
             className="h-12 w-12 shrink-0"
           />
-          <span className="truncate text-[15px] font-semibold tracking-tight">
-            Fuel<span className="text-signal">Born</span>
+          <span className="truncate text-[15px] font-semibold tracking-[0.035em]">
+            clankerplace
           </span>
         </Link>
       </div>

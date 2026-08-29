@@ -323,7 +323,6 @@ export function ForgeFlow() {
 
   return (
     <div className="relative min-h-full overflow-hidden bg-[color:var(--bg-pure)]">
-      <div className="pointer-events-none absolute inset-0 grid-paper opacity-35" />
       <div className="pointer-events-none absolute -right-32 -top-40 h-[420px] w-[420px] rounded-full bg-[color:var(--signal)]/10 blur-[110px]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
@@ -394,7 +393,7 @@ function ForgeHeader({ screen }: { screen: Screen }) {
       <div>
         <div className="micro mb-3 flex items-center gap-2 text-[color:var(--signal)]">
           <Flame className="h-3.5 w-3.5" />
-          FuelBorn Forge / Monad
+          clankerplace Forge / Monad
         </div>
         <h1 className="display max-w-3xl text-4xl leading-[0.95] text-[color:var(--text-primary)] sm:text-5xl lg:text-6xl">
           Give an agent a life worth{" "}
@@ -772,7 +771,7 @@ function FuelStep({
         </dl>
         <div className="m-5 border border-[color:var(--signal)]/20 bg-[color:var(--signal)]/5 p-4">
           <p className="text-[11px] leading-5 text-[color:var(--text-tertiary)]">
-            You sign one transaction. FuelBorn verifies it before provisioning,
+            You sign one transaction. clankerplace verifies it before provisioning,
             so a fake transaction hash cannot create a pod or credit FUEL.
           </p>
         </div>

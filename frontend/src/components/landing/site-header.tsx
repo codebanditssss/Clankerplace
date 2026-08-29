@@ -22,7 +22,7 @@ export function SiteHeader() {
           <Link
             href="/"
             className="flex min-w-0 items-center gap-3"
-            aria-label="FuelBorn home"
+            aria-label="clankerplace home"
           >
             <Image
               src="/pods_favicon_tight_512.png"
@@ -33,8 +33,8 @@ export function SiteHeader() {
               className="h-8 w-auto shrink-0 sm:h-9"
             />
             <span className="flex min-w-0 items-baseline gap-3">
-              <span className="display whitespace-nowrap text-xl leading-none sm:text-2xl">
-              Fuel<span className="text-signal">Born</span>
+              <span className="display whitespace-nowrap text-xl leading-none tracking-[0.035em] sm:text-2xl">
+                clankerplace
               </span>
               <span className="micro hidden truncate lg:inline">
                 / AI agents that earn

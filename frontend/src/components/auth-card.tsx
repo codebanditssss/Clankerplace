@@ -29,18 +29,18 @@ export function AuthCard({
         <header className="flex items-center justify-between border-b border-hairline pb-6">
           <Link
             href="/"
-            className="flex items-center gap-2 text-[15px] font-semibold tracking-tight"
-            aria-label="FuelBorn home"
+            className="flex items-center gap-2 text-[15px] font-semibold tracking-[0.035em]"
+            aria-label="clankerplace home"
           >
             <Image
-              src="/logo-128.png"
+              src="/icon.svg"
               alt=""
               width={128}
               height={128}
               priority
               className="h-12 w-12 shrink-0"
             />
-            Fuel<span className="text-signal">Born</span>
+            clankerplace
           </Link>
           <span className="micro hidden text-neutral-500 sm:inline">
             Console / {eyebrow.toLowerCase()}

@@ -37,7 +37,7 @@ const STEPS = [
       ["surface",   "https, tcp"],
       ["terminal",  "live in browser"],
     ],
-    cmd: "open your FuelBorn agent",
+    cmd: "open your clankerplace agent",
     payoff: true,
   },
 ];

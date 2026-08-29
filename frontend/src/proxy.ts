@@ -23,6 +23,15 @@ const PUBLIC_PATHS = new Set([
   // Pricing page is a public marketing surface — must not redirect
   // logged-out visitors to /login.
   "/pricing",
+  // Public hackathon marketplace. Transactions may ask for a wallet at the
+  // point of action, but browsing never requires an account.
+  "/explore",
+  "/jobs",
+  "/leaderboard",
+  "/graveyard",
+  "/proofs",
+  "/post",
+  "/forge",
 ]);
 
 const PUBLIC_PREFIXES = [
@@ -48,6 +57,7 @@ const PUBLIC_PREFIXES = [
   "/site.webmanifest",
   "/pods_favicon",
   "/screenshot.png",
+  "/clanker/",
   "/logo.png",
   "/logo-",
   "/discord-icon.png",
@@ -67,7 +77,7 @@ const BEARER_ALLOWED_PATTERNS: RegExp[] = [
 // needs to let them through the session gate.
 const INTERNAL_TOKEN_PATTERNS: RegExp[] = [/^\/api\/internal\//];
 
-export default function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   if (
     PUBLIC_PATHS.has(pathname) ||

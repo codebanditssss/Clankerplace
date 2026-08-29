@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { listMyPods } from "@/lib/pods";
 import { AppShell } from "@/components/app-shell";
 import { BalanceBadge } from "@/components/billing/balance-badge";
-import { getCreditBalance } from "@/lib/billing/credits";
 
 export default async function AppLayout({
   children,
@@ -16,6 +15,7 @@ export default async function AppLayout({
   }
 
   const pods = await listMyPods(user.pelicanUserId);
+  const { getCreditBalance } = await import("@/lib/billing/credits");
   const balanceCents = getCreditBalance(user.id).balance_cents;
 
   return (

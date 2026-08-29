@@ -11,7 +11,7 @@ import {
   MemoryStick,
   Plus,
 } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { listMyPods } from "@/lib/pods";
 import { EmptyState } from "@/components/ui/empty";
 import { BrandIcon, providerBrand } from "@/components/brand-icon";
@@ -20,7 +20,7 @@ import DashboardGreeting from "./_components/DashboardGreeting";
 import { SubscriptionGateNotice } from "@/components/billing/subscription-gate-notice";
 import AutoOpenWizardFromQuery from "./_components/AutoOpenWizardFromQuery";
 import DomainPill from "./_components/DomainPill";
-import db, { type PodDomainRow } from "@/lib/db";
+import type { PodDomainRow } from "@/lib/db";
 import { fullDomain } from "@/lib/domains";
 
 export default async function OverviewPage() {
@@ -30,6 +30,7 @@ export default async function OverviewPage() {
   if (!user) {
     return <LandingPage />;
   }
+  const { default: db } = await import("@/lib/db");
   const pods = await listMyPods(user.pelicanUserId);
   const running = pods.filter((p) => p.installed && (!p.status || p.status === "running"));
   const installing = pods.filter((p) => !p.installed);
@@ -55,6 +56,7 @@ export default async function OverviewPage() {
   const activity = getOverviewActivity(
     user.id,
     pods.map((p) => ({ identifier: p.identifier, createdAt: p.createdAt })),
+    db,
   );
 
   return (
@@ -315,6 +317,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function getOverviewActivity(
   userId: number,
   pods: Array<{ identifier: string; createdAt: string }>,
+  db: (typeof import("@/lib/db"))["default"],
 ): OverviewActivity {
   const today = startOfUtcDay(new Date());
   const gridStart = addDays(today, -(ACTIVITY_DAYS - 1));

@@ -27,13 +27,6 @@ const rubikMono = Rubik_Mono_One({
   display: "swap",
 });
 
-const shareImage = {
-  url: "/screenshot.png",
-  width: 1528,
-  height: 772,
-  alt: "FuelBorn dashboard preview",
-};
-
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.FUELBORN_PUBLIC_URL ??
@@ -43,27 +36,18 @@ export const metadata: Metadata = {
   title: FUELBORN_BRAND.name,
   description: FUELBORN_BRAND.tagline,
   icons: {
-    icon: [
-      { url: "/pods_favicon_tight_512.png", sizes: "512x512", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
-    ],
-    shortcut: ["/pods_favicon_tight_512.png"],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
   },
   manifest: "/site.webmanifest",
   openGraph: {
     title: FUELBORN_BRAND.name,
     description: FUELBORN_BRAND.tagline,
-    images: [shareImage],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: FUELBORN_BRAND.name,
     description: FUELBORN_BRAND.tagline,
-    images: [shareImage],
   },
 };
 

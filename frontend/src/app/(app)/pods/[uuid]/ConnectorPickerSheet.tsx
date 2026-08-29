@@ -578,7 +578,7 @@ function InfraSetup({
     <div className="space-y-5 px-6 py-5">
       <div className="border border-[color:var(--acc-amber)]/30 bg-[color:var(--acc-amber-soft)]/40 p-3 text-[12px] leading-relaxed text-[color:var(--text-secondary)]">
         <strong className="text-[color:var(--acc-amber)]">Not ready yet:</strong>{" "}
-        {connector.label} expects an inbound HTTPS endpoint, but FuelBorn
+        {connector.label} expects an inbound HTTPS endpoint, but clankerplace
         doesn&apos;t expose per-pod public URLs yet. Tracked as the
         per-pod-ingress work-stream.
       </div>
