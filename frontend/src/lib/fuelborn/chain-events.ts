@@ -129,6 +129,24 @@ export function getChainEvent(
   );
 }
 
+export function listObservedFundingEventsThrough(args: {
+  chainId: number;
+  contractAddress: string;
+  blockNumber: bigint | number | string;
+}): FuelChainEventRow[] {
+  requirePositiveInteger(args.chainId, "chain id");
+  const address = normalizeEvmAddress(args.contractAddress);
+  const through = BigInt(normalizeBlockNumber(args.blockNumber));
+  return db
+    .prepare<[number, string], FuelChainEventRow>(
+      `SELECT * FROM fuel_chain_events
+        WHERE chain_id = ? AND contract_address = ? AND status = 'observed'
+        ORDER BY id`,
+    )
+    .all(args.chainId, address)
+    .filter((event) => BigInt(event.block_number) <= through);
+}
+
 export function setSyncCursor(args: {
   chainId: number;
   contractAddress: string;

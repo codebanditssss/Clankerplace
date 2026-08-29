@@ -57,6 +57,11 @@ const RECOMMENDED_IN_PRODUCTION: EnvSpec[] = [
   { name: "RESEND_WEBHOOK_SECRET", purpose: "Svix secret for the inbound email webhook (per-pod email feature)" },
   { name: "DODO_PAYMENTS_ENVIRONMENT", purpose: "Dodo Payments environment: test_mode or live_mode (defaults to live_mode)" },
   { name: "BOOTSTRAP_ADMIN_EMAIL", purpose: "operator email auto-promoted to is_admin=1 at boot + signup (no manual SQL needed)" },
+  { name: "MONAD_RPC_URL", purpose: "Monad JSON-RPC endpoint for AgentFunded events" },
+  { name: "MONAD_CHAIN_ID", purpose: "expected Monad network chain ID" },
+  { name: "FUELBORN_CONTRACT_ADDRESS", purpose: "deployed FuelBorn contract address" },
+  { name: "FUELBORN_CONTRACT_DEPLOY_BLOCK", purpose: "first block the funding indexer scans" },
+  { name: "FUEL_PER_MON", purpose: "whole FUEL units credited for one MON" },
 ];
 
 export type EnvValidationResult = {

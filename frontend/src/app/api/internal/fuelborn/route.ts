@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { runLifecycleEffects } from "@/lib/fuelborn/effects-worker";
 import { runFuelTick } from "@/lib/fuelborn/lifecycle";
+import { syncMonadFundingFromEnv } from "@/lib/fuelborn/monad-indexer";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,17 @@ export async function POST(req: NextRequest) {
   running = true;
   try {
     const nowSeconds = Math.floor(Date.now() / 1_000);
+    let chain: Awaited<ReturnType<typeof syncMonadFundingFromEnv>> | {
+      configured: true;
+      error: string;
+    };
+    try {
+      chain = await syncMonadFundingFromEnv();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[fuelborn] Monad sync failed:", message);
+      chain = { configured: true, error: message };
+    }
     const ticks = runFuelTick(nowSeconds);
     const effects = await runLifecycleEffects({ nowSeconds });
     return NextResponse.json({
@@ -36,6 +48,7 @@ export async function POST(req: NextRequest) {
         0,
       ),
       deaths: ticks.filter((tick) => tick.transition === "died").length,
+      chain,
       effects,
     });
   } catch (error) {
