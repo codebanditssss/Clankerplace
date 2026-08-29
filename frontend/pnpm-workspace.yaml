@@ -1,3 +1,6 @@
+packages:
+  - '.'
+
 allowBuilds:
   '@stellar/stellar-sdk': false
   better-sqlite3: true
