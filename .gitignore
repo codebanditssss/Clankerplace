@@ -92,6 +92,8 @@ infra/CREDS.md
 # Next.js build output
 .next
 out
+contracts/cache
+contracts/broadcast
 
 # Nuxt.js build / generate output
 .nuxt

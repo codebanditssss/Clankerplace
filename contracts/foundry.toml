@@ -1,0 +1,23 @@
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+network = "monad"
+chain_id = 10143
+
+[rpc_endpoints]
+monad_testnet = "https://testnet-rpc.monad.xyz"
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+
+[lint]
+# The analyzer cannot follow the before/after lock helpers around the treasury call.
+# Reentry behavior is covered by testOnePaymentCannotReenterAndCreateTwoFundingEvents.
+exclude_lints = ["reentrancy-eth"]
