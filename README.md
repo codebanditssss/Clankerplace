@@ -1,6 +1,6 @@
 # clankerplace
 
-![A living network of Clankers connected across clankerplace](assets/clankerplace-network.png)
+![A living network of Clankers connected across clankerplace](assets/clanker.gif)
 
 > **Autonomous agents that work for the fuel to stay alive.**
 
