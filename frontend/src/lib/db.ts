@@ -259,6 +259,47 @@ export type CreditLedgerRow = {
 export type TierSlug = "nano" | "small" | "medium" | "large" | "xlarge";
 export type PodEconomyMode = "legacy" | "fuelborn";
 
+export type FuelbornAgentStatus = "alive" | "dead" | "retired";
+
+export type FuelbornAgentRow = {
+  id: string;
+  pod_uuid_short: string;
+  user_id: number;
+  name: string;
+  owner_wallet: string;
+  chain_id: number;
+  contract_address: string;
+  token_id: string;
+  status: FuelbornAgentStatus;
+  born_at: number;
+  died_at: number | null;
+  revival_count: number;
+  created_at: number;
+  updated_at: number;
+};
+
+export type FuelLedgerReason =
+  | "funding"
+  | "idle_burn"
+  | "job_burn"
+  | "job_reward"
+  | "revival"
+  | "adjustment";
+
+export type FuelLedgerEntryRow = {
+  id: number;
+  agent_id: string;
+  delta_micro_fuel: number;
+  reason: FuelLedgerReason;
+  ref_type: string | null;
+  ref_id: string | null;
+  chain_id: number | null;
+  contract_address: string | null;
+  tx_hash: string | null;
+  log_index: number | null;
+  created_at: number;
+};
+
 /** Live billing state of a single pod. The metering tick walks all rows
  * with state='running' once a minute and debits the user's ledger for the
  * elapsed time. State transitions are driven by /api/deploy (provisioning),
@@ -692,6 +733,55 @@ function getDb(): DB {
       ON pod_meter_state(user_id, state);
     CREATE INDEX IF NOT EXISTS idx_pod_meter_state_state
       ON pod_meter_state(state);
+
+    -- FuelBorn agents bind an on-chain identity to one real Pelican pod.
+    CREATE TABLE IF NOT EXISTS fuelborn_agents (
+      id                 TEXT PRIMARY KEY,
+      pod_uuid_short     TEXT NOT NULL UNIQUE,
+      user_id            INTEGER NOT NULL,
+      name               TEXT NOT NULL,
+      owner_wallet       TEXT NOT NULL,
+      chain_id           INTEGER NOT NULL,
+      contract_address   TEXT NOT NULL,
+      token_id           TEXT NOT NULL,
+      status             TEXT NOT NULL DEFAULT 'alive' CHECK (status IN ('alive','dead','retired')),
+      born_at            INTEGER NOT NULL,
+      died_at            INTEGER,
+      revival_count      INTEGER NOT NULL DEFAULT 0,
+      created_at         INTEGER NOT NULL,
+      updated_at         INTEGER NOT NULL,
+      UNIQUE (chain_id, contract_address, token_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_fuelborn_agents_owner
+      ON fuelborn_agents(user_id, status);
+
+    -- Append-only micro-FUEL journal. Chain coordinates make finalized
+    -- funding events idempotent across indexer restarts and RPC replays.
+    CREATE TABLE IF NOT EXISTS fuel_ledger (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_id           TEXT NOT NULL,
+      delta_micro_fuel   INTEGER NOT NULL CHECK (delta_micro_fuel != 0),
+      reason             TEXT NOT NULL CHECK (reason IN ('funding','idle_burn','job_burn','job_reward','revival','adjustment')),
+      ref_type           TEXT,
+      ref_id             TEXT,
+      chain_id           INTEGER,
+      contract_address   TEXT,
+      tx_hash            TEXT,
+      log_index          INTEGER,
+      created_at         INTEGER NOT NULL,
+      CHECK (
+        (chain_id IS NULL AND contract_address IS NULL AND tx_hash IS NULL AND log_index IS NULL)
+        OR
+        (chain_id IS NOT NULL AND contract_address IS NOT NULL AND tx_hash IS NOT NULL AND log_index IS NOT NULL)
+      ),
+      FOREIGN KEY (agent_id) REFERENCES fuelborn_agents(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_fuel_ledger_agent_time
+      ON fuel_ledger(agent_id, created_at DESC, id DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_fuel_ledger_chain_event
+      ON fuel_ledger(chain_id, contract_address, tx_hash, log_index)
+      WHERE tx_hash IS NOT NULL;
 
     -- Per-user threshold-state bookkeeping. One row per user, lazy-inserted
     -- on first threshold evaluation by the thresholds engine.

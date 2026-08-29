@@ -192,6 +192,8 @@ test("migration: new tables exist and are queryable", () => {
     "wallet_nonces",
     "account_email_login_migrations",
     "pod_meter_state",
+    "fuelborn_agents",
+    "fuel_ledger",
     "user_billing_state",
     "promo_codes",
     "promo_redemptions",
