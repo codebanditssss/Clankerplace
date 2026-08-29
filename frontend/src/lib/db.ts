@@ -300,6 +300,26 @@ export type FuelLedgerEntryRow = {
   created_at: number;
 };
 
+export type FuelMeterStateRow = {
+  agent_id: string;
+  burn_rate_micro_fuel_per_second: number;
+  last_burned_at: number;
+  created_at: number;
+  updated_at: number;
+};
+
+export type FuelLifecycleEffectRow = {
+  id: number;
+  effect_key: string;
+  agent_id: string;
+  pod_uuid_short: string;
+  kind: "power_stop" | "power_start";
+  status: "pending" | "completed";
+  attempts: number;
+  created_at: number;
+  completed_at: number | null;
+};
+
 /** Live billing state of a single pod. The metering tick walks all rows
  * with state='running' once a minute and debits the user's ledger for the
  * elapsed time. State transitions are driven by /api/deploy (provisioning),
@@ -782,6 +802,32 @@ function getDb(): DB {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_fuel_ledger_chain_event
       ON fuel_ledger(chain_id, contract_address, tx_hash, log_index)
       WHERE tx_hash IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS fuel_meter_state (
+      agent_id                         TEXT PRIMARY KEY,
+      burn_rate_micro_fuel_per_second INTEGER NOT NULL CHECK (burn_rate_micro_fuel_per_second > 0),
+      last_burned_at                   INTEGER NOT NULL,
+      created_at                       INTEGER NOT NULL,
+      updated_at                       INTEGER NOT NULL,
+      FOREIGN KEY (agent_id) REFERENCES fuelborn_agents(id) ON DELETE CASCADE
+    );
+
+    -- Transactional outbox: state transitions commit before Pelican power
+    -- calls and remain retryable when a node or the panel is unavailable.
+    CREATE TABLE IF NOT EXISTS fuel_lifecycle_effects (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      effect_key         TEXT NOT NULL UNIQUE,
+      agent_id           TEXT NOT NULL,
+      pod_uuid_short     TEXT NOT NULL,
+      kind               TEXT NOT NULL CHECK (kind IN ('power_stop','power_start')),
+      status             TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed')),
+      attempts           INTEGER NOT NULL DEFAULT 0,
+      created_at         INTEGER NOT NULL,
+      completed_at       INTEGER,
+      FOREIGN KEY (agent_id) REFERENCES fuelborn_agents(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_fuel_lifecycle_pending
+      ON fuel_lifecycle_effects(status, id);
 
     -- Per-user threshold-state bookkeeping. One row per user, lazy-inserted
     -- on first threshold evaluation by the thresholds engine.
