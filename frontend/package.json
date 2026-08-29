@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node server.mjs",
-    "test": "node --conditions=react-server --import tsx --test tests/lib/*.test.ts"
+    "test": "node --conditions=react-server --import tsx --test tests/lib/*.test.ts",
+    "contract:deploy": "node --conditions=react-server --import tsx scripts/deploy-fuelborn.ts"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
