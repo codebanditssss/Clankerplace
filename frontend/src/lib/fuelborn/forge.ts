@@ -297,6 +297,21 @@ export function getForgeAttempt(id: string, userId: number): ForgeAttemptRow {
   return attempt;
 }
 
+export function publicForgeAttempt(attempt: ForgeAttemptRow) {
+  return {
+    id: attempt.id,
+    agent_id: attempt.agent_id,
+    status: attempt.status,
+    metadata_hash: attempt.metadata_hash,
+    owner_wallet: attempt.owner_wallet,
+    deposit_wei: attempt.deposit_wei,
+    tx_hash: attempt.tx_hash,
+    token_id: attempt.token_id,
+    pod_uuid_short: attempt.pod_uuid_short,
+    last_error: attempt.last_error,
+  };
+}
+
 function activateAttempt(attempt: ForgeAttemptRow, now: number): void {
   if (
     attempt.token_id == null ||

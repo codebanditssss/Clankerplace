@@ -62,6 +62,8 @@ const RECOMMENDED_IN_PRODUCTION: EnvSpec[] = [
   { name: "FUELBORN_CONTRACT_ADDRESS", purpose: "deployed FuelBorn contract address" },
   { name: "FUELBORN_CONTRACT_DEPLOY_BLOCK", purpose: "first block the funding indexer scans" },
   { name: "FUEL_PER_MON", purpose: "whole FUEL units credited for one MON" },
+  { name: "FUELBORN_MIN_FORGE_DEPOSIT_WEI", purpose: "minimum initial MON deposit accepted by registerAgent" },
+  { name: "FUELBORN_IDLE_BURN_MICRO_FUEL_PER_SECOND", purpose: "integer idle burn rate for newly forged agents (defaults to 278)" },
 ];
 
 export type EnvValidationResult = {
