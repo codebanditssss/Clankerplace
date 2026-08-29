@@ -51,6 +51,21 @@ const dbPath = join(dir, "fake-prod.db");
       user_id INTEGER NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE pod_meter_state (
+      pod_uuid_short TEXT PRIMARY KEY,
+      pod_full_uuid TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      tier_slug TEXT NOT NULL,
+      rate_milli_cents_per_hour INTEGER NOT NULL,
+      ram_mib INTEGER NOT NULL,
+      disk_mib INTEGER NOT NULL,
+      cpu_percent INTEGER NOT NULL,
+      state TEXT NOT NULL,
+      last_billed_at INTEGER NOT NULL,
+      sub_micro_cents INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
   // Seed actual rows that the migrations need to preserve.
   seed
@@ -59,6 +74,14 @@ const dbPath = join(dir, "fake-prod.db");
        VALUES (1, 'legacy@prod.test', 'bcrypt$hash', 7001, 'tok-existing')`,
     )
     .run();
+  seed.prepare(
+    `INSERT INTO pod_meter_state (
+       pod_uuid_short, pod_full_uuid, user_id, tier_slug,
+       rate_milli_cents_per_hour, ram_mib, disk_mib, cpu_percent,
+       state, last_billed_at, sub_micro_cents, created_at, updated_at
+     ) VALUES ('legacyPod', 'full-legacyPod', 1, 'medium', 5000,
+               4096, 20000, 200, 'running', 100, 0, 100, 100)`,
+  ).run();
   seed
     .prepare(
       `INSERT INTO users (id, email, password_hash, pelican_user_id, pelican_client_token)
@@ -148,6 +171,16 @@ test("migration: pre-existing pod_domains data is intact", () => {
   assert.equal(row.pod_uuid_short, "abc12345");
   assert.equal(row.port, 8080);
   assert.equal(row.user_id, 1);
+});
+
+test("migration: existing pods default to the legacy economy", () => {
+  const row = db
+    .prepare(
+      `SELECT economy_mode, state FROM pod_meter_state WHERE pod_uuid_short = ?`,
+    )
+    .get("legacyPod") as { economy_mode: string; state: string };
+  assert.equal(row.economy_mode, "legacy");
+  assert.equal(row.state, "running");
 });
 
 test("migration: new tables exist and are queryable", () => {

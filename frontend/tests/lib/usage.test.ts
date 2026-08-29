@@ -124,6 +124,18 @@ test("usage: getCurrentBurnPerDayCents sums running rates × 24/1000", () => {
     initialState: "stopped",
   });
   assert.equal(usage.getCurrentBurnPerDayCents(50), 120);
+  // A running FuelBorn pod belongs to the separate FUEL economy.
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "podFuel",
+    pod_full_uuid: "full-podFuel",
+    user_id: 50,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "fuelborn",
+  });
+  assert.equal(usage.getCurrentBurnPerDayCents(50), 120);
 });
 
 test("usage: runwayDays = balance / burn, Infinity when burn=0", () => {

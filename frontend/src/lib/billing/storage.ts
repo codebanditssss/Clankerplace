@@ -59,7 +59,7 @@ export function runStorageRollup(
   const pods = db
     .prepare<[], PodMeterState>(
       `SELECT * FROM pod_meter_state
-        WHERE state IN ('stopped', 'suspended')`,
+        WHERE state IN ('stopped', 'suspended') AND economy_mode = 'legacy'`,
     )
     .all();
   stats.pods_scanned = pods.length;

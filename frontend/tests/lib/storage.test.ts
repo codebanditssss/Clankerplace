@@ -130,3 +130,24 @@ test("storage: feature flag off → entire rollup skipped", () => {
     adminId: 0,
   });
 });
+
+test("storage: FuelBorn pods are never charged by the legacy rollup", () => {
+  db.prepare(
+    `INSERT INTO users (id, email, password_hash, pelican_user_id, email_verified_at)
+     VALUES (91, 'fuel@storage.test', 'x', 9091, datetime('now'))`,
+  ).run();
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "fuelStorage",
+    pod_full_uuid: "full-fuelStorage",
+    user_id: 91,
+    ramMib: 4096,
+    diskMib: 20 * 1024,
+    cpuPercent: 200,
+    initialState: "stopped",
+    economyMode: "fuelborn",
+  });
+
+  storage.runStorageRollup(NOW + 30 * DAY);
+
+  assert.equal(ledger.getBalanceCents(91), 0);
+});

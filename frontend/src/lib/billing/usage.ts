@@ -202,6 +202,7 @@ export function getCurrentBurnPerDayCents(userId: number): number {
           `SELECT SUM(rate_milli_cents_per_hour) AS s
              FROM pod_meter_state
             WHERE user_id = ? AND state = 'running'
+              AND economy_mode = 'legacy'
               AND pod_uuid_short <> ?`,
         )
         .get(userId, freeSlot)
@@ -209,7 +210,8 @@ export function getCurrentBurnPerDayCents(userId: number): number {
         .prepare<[number], { s: number | null }>(
           `SELECT SUM(rate_milli_cents_per_hour) AS s
              FROM pod_meter_state
-            WHERE user_id = ? AND state = 'running'`,
+            WHERE user_id = ? AND state = 'running'
+              AND economy_mode = 'legacy'`,
         )
         .get(userId);
   const sumMilli = row?.s ?? 0;

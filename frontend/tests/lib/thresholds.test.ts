@@ -262,3 +262,94 @@ test("evaluateUser: top-up resumes the suspended pod", async () => {
     .get("tp1") as { state: string };
   assert.equal(row.state, "running");
 });
+
+test("evaluateUser: legacy suspension never controls FuelBorn pods", async () => {
+  db.prepare(
+    `INSERT INTO users (id, email, password_hash, pelican_user_id, email_verified_at)
+     VALUES (11, 'fuel@thresh.test', 'x', 1011, datetime('now'))`,
+  ).run();
+  ledger.insertLedger({
+    userId: 11,
+    delta_cents: -100,
+    reason: "pod_hour",
+    note: "test seed",
+  });
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "legacy11",
+    pod_full_uuid: "full-legacy11",
+    user_id: 11,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "legacy",
+  });
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "fuelborn11",
+    pod_full_uuid: "full-fuelborn11",
+    user_id: 11,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "fuelborn",
+  });
+
+  await thresholds.evaluateUser(11, {
+    nowSeconds: 7000,
+    effectRunner: async () => {},
+  });
+
+  const rows = db
+    .prepare(
+      `SELECT pod_uuid_short, state FROM pod_meter_state
+       WHERE user_id = ? ORDER BY pod_uuid_short`,
+    )
+    .all(11) as Array<{ pod_uuid_short: string; state: string }>;
+  assert.deepEqual(rows, [
+    { pod_uuid_short: "fuelborn11", state: "running" },
+    { pod_uuid_short: "legacy11", state: "suspended" },
+  ]);
+
+  await thresholds.evaluateUser(11, {
+    nowSeconds: 7000 + 31 * 86400,
+    effectRunner: async () => {},
+  });
+  const afterPurge = db
+    .prepare(
+      `SELECT pod_uuid_short, state FROM pod_meter_state
+       WHERE user_id = ? ORDER BY pod_uuid_short`,
+    )
+    .all(11) as Array<{ pod_uuid_short: string; state: string }>;
+  assert.deepEqual(afterPurge, [
+    { pod_uuid_short: "fuelborn11", state: "running" },
+    { pod_uuid_short: "legacy11", state: "deleted" },
+  ]);
+});
+
+test("runThresholdSweep: ignores users with only FuelBorn pods", async () => {
+  db.prepare(
+    `INSERT INTO users (id, email, password_hash, pelican_user_id, email_verified_at)
+     VALUES (12, 'sweep@thresh.test', 'x', 1012, datetime('now'))`,
+  ).run();
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "fuelborn12",
+    pod_full_uuid: "full-fuelborn12",
+    user_id: 12,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "fuelborn",
+  });
+  const expected = db
+    .prepare(`SELECT COUNT(*) AS count FROM user_billing_state`)
+    .get() as { count: number };
+
+  const result = await thresholds.runThresholdSweep({
+    nowSeconds: 8000,
+    effectRunner: async () => {},
+  });
+
+  assert.equal(result.users_evaluated, expected.count);
+});

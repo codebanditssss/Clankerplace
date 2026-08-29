@@ -385,7 +385,9 @@ function materializeEffect(
       const pods = db
         .prepare<[number], { pod_uuid_short: string }>(
           `SELECT pod_uuid_short FROM pod_meter_state
-            WHERE user_id = ? AND state IN ('running','stopped','suspended')`,
+            WHERE user_id = ?
+              AND state IN ('running','stopped','suspended')
+              AND economy_mode = 'legacy'`,
         )
         .all(userId)
         .map((r) => r.pod_uuid_short);
@@ -561,7 +563,8 @@ export async function runThresholdSweep(opts: {
       `SELECT DISTINCT u.id AS user_id
          FROM users u
     LEFT JOIN user_billing_state ubs ON ubs.user_id = u.id
-    LEFT JOIN pod_meter_state pms ON pms.user_id = u.id AND pms.state != 'deleted'
+    LEFT JOIN pod_meter_state pms ON pms.user_id = u.id
+      AND pms.state != 'deleted' AND pms.economy_mode = 'legacy'
         WHERE ubs.user_id IS NOT NULL
            OR pms.user_id IS NOT NULL`,
     )

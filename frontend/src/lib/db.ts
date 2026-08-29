@@ -257,6 +257,7 @@ export type CreditLedgerRow = {
 
 /** Tier slug — must match frontend/src/lib/billing/pricing.ts SIZES. */
 export type TierSlug = "nano" | "small" | "medium" | "large" | "xlarge";
+export type PodEconomyMode = "legacy" | "fuelborn";
 
 /** Live billing state of a single pod. The metering tick walks all rows
  * with state='running' once a minute and debits the user's ledger for the
@@ -282,6 +283,8 @@ export type PodMeterState = {
   ram_mib: number;
   disk_mib: number;
   cpu_percent: number;
+  /** Exactly one economy owns charging and lifecycle automation. */
+  economy_mode: PodEconomyMode;
   state:
     | "provisioning"
     | "running"
@@ -677,6 +680,7 @@ function getDb(): DB {
       ram_mib                     INTEGER NOT NULL,
       disk_mib                    INTEGER NOT NULL,
       cpu_percent                 INTEGER NOT NULL,
+      economy_mode               TEXT NOT NULL DEFAULT 'legacy' CHECK (economy_mode IN ('legacy','fuelborn')),
       state                       TEXT NOT NULL CHECK (state IN ('provisioning','running','stopped','suspended','deleted')),
       last_billed_at              INTEGER NOT NULL,
       sub_micro_cents             INTEGER NOT NULL DEFAULT 0,
@@ -1101,6 +1105,13 @@ function getDb(): DB {
     } catch (err) {
       if (!String(err).toLowerCase().includes("duplicate column")) throw err;
     }
+  }
+  try {
+    db.exec(
+      "ALTER TABLE pod_meter_state ADD COLUMN economy_mode TEXT NOT NULL DEFAULT 'legacy' CHECK (economy_mode IN ('legacy','fuelborn'))",
+    );
+  } catch (err) {
+    if (!String(err).toLowerCase().includes("duplicate column")) throw err;
   }
   // Unique index on referral_code, partial so NULL rows don't collide.
   try {

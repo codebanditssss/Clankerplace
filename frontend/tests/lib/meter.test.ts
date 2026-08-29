@@ -214,6 +214,47 @@ test("meter: runMeterTick skips stopped/deleted pods", () => {
   assert.equal(results[0].pod_uuid_short, "run");
 });
 
+test("meter: runMeterTick leaves FuelBorn pods to the FUEL economy", () => {
+  db.prepare(`DELETE FROM pod_meter_state`).run();
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "legacy",
+    pod_full_uuid: "full-legacy",
+    user_id: 1,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "legacy",
+  });
+  meter.upsertMeterStateFromPelican({
+    pod_uuid_short: "fuelborn",
+    pod_full_uuid: "full-fuelborn",
+    user_id: 1,
+    ramMib: 4096,
+    diskMib: 20000,
+    cpuPercent: 200,
+    initialState: "running",
+    economyMode: "fuelborn",
+  });
+  db.prepare(`UPDATE pod_meter_state SET last_billed_at = 0`).run();
+
+  const balanceBefore = ledger.getBalanceCents(1);
+  const results = meter.runMeterTick(3600);
+
+  assert.deepEqual(
+    results.map((result) => result.pod_uuid_short),
+    ["legacy"],
+  );
+  assert.equal(ledger.getBalanceCents(1), balanceBefore - 5);
+  const fuelborn = db
+    .prepare(
+      `SELECT economy_mode, last_billed_at FROM pod_meter_state WHERE pod_uuid_short = ?`,
+    )
+    .get("fuelborn") as { economy_mode: string; last_billed_at: number };
+  assert.equal(fuelborn.economy_mode, "fuelborn");
+  assert.equal(fuelborn.last_billed_at, 0);
+});
+
 test("meter: upsertMeterStateFromPelican picks the right tier from RAM", () => {
   const t = meter.upsertMeterStateFromPelican({
     pod_uuid_short: "tierP",

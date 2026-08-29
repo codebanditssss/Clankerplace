@@ -1,5 +1,9 @@
 import "server-only";
-import db, { type PodMeterState, type TierSlug } from "../db";
+import db, {
+  type PodEconomyMode,
+  type PodMeterState,
+  type TierSlug,
+} from "../db";
 import { insertLedger } from "./ledger";
 import { tierFromRam, type Tier } from "./pricing";
 import { isPodFreeForUser } from "./cohort";
@@ -180,7 +184,8 @@ export type TickResult = {
 export function runMeterTick(nowSeconds: number = unixNow()): TickResult[] {
   const pods = db
     .prepare<[], PodMeterState>(
-      `SELECT * FROM pod_meter_state WHERE state = 'running'`,
+      `SELECT * FROM pod_meter_state
+        WHERE state = 'running' AND economy_mode = 'legacy'`,
     )
     .all();
   const results: TickResult[] = [];
@@ -229,6 +234,8 @@ export function upsertMeterStateFromPelican(args: {
   /** Initial state to write. Deploy uses 'provisioning'; the install-
    * complete callback (or first running observation) flips to 'running'. */
   initialState?: PodMeterState["state"];
+  /** Billing/lifecycle authority. Existing callers remain legacy. */
+  economyMode?: PodEconomyMode;
 }): Tier {
   const tier = tierFromRam(args.ramMib);
   const now = unixNow();
@@ -247,6 +254,7 @@ export function upsertMeterStateFromPelican(args: {
               tier_slug = ?,
               rate_milli_cents_per_hour = ?,
               ram_mib = ?, disk_mib = ?, cpu_percent = ?,
+              economy_mode = ?,
               updated_at = ?
         WHERE pod_uuid_short = ?`,
     ).run(
@@ -257,6 +265,7 @@ export function upsertMeterStateFromPelican(args: {
       args.ramMib,
       args.diskMib,
       args.cpuPercent,
+      args.economyMode ?? existing.economy_mode,
       now,
       args.pod_uuid_short,
     );
@@ -266,8 +275,8 @@ export function upsertMeterStateFromPelican(args: {
     `INSERT INTO pod_meter_state (
        pod_uuid_short, pod_full_uuid, user_id, tier_slug,
        rate_milli_cents_per_hour, ram_mib, disk_mib, cpu_percent,
-       state, last_billed_at, sub_micro_cents, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+       economy_mode, state, last_billed_at, sub_micro_cents, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
   ).run(
     args.pod_uuid_short,
     args.pod_full_uuid,
@@ -277,6 +286,7 @@ export function upsertMeterStateFromPelican(args: {
     args.ramMib,
     args.diskMib,
     args.cpuPercent,
+    args.economyMode ?? "legacy",
     args.initialState ?? "provisioning",
     now,
     now,
@@ -329,7 +339,7 @@ export function suspendUserPodsInDb(userId: number): string[] {
   const rows = db
     .prepare<[number], { pod_uuid_short: string }>(
       `SELECT pod_uuid_short FROM pod_meter_state
-        WHERE user_id = ? AND state = 'running'`,
+        WHERE user_id = ? AND state = 'running' AND economy_mode = 'legacy'`,
     )
     .all(userId);
   for (const r of rows) {
@@ -344,7 +354,7 @@ export function resumeUserPodsInDb(userId: number): string[] {
   const rows = db
     .prepare<[number], { pod_uuid_short: string }>(
       `SELECT pod_uuid_short FROM pod_meter_state
-        WHERE user_id = ? AND state = 'suspended'`,
+        WHERE user_id = ? AND state = 'suspended' AND economy_mode = 'legacy'`,
     )
     .all(userId);
   for (const r of rows) {
@@ -363,7 +373,7 @@ export function listStorageBillablePods(): PodMeterState[] {
   return db
     .prepare<[], PodMeterState>(
       `SELECT * FROM pod_meter_state
-        WHERE state IN ('stopped', 'suspended')`,
+        WHERE state IN ('stopped', 'suspended') AND economy_mode = 'legacy'`,
     )
     .all();
 }
