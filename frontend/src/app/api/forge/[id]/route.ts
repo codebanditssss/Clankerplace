@@ -11,6 +11,7 @@ import {
   createViemForgeRegistrationReader,
   loadForgeRuntimeConfig,
 } from "@/lib/fuelborn/forge-runtime";
+import { isForgePodPendingError } from "@/lib/fuelborn/forge-finalizer";
 
 export const runtime = "nodejs";
 
@@ -78,6 +79,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
 function forgeError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
+  if (isForgePodPendingError(error)) {
+    return NextResponse.json(
+      { error: "forge_pod_pending", stage: error.stage, message },
+      { status: 409 },
+    );
+  }
   if (message === "Forge attempt not found") {
     return NextResponse.json({ error: "forge_not_found" }, { status: 404 });
   }

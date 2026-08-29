@@ -33,6 +33,29 @@ export function composePersona(persona: string): string {
   return `${SOUL_HEADER}\n\n${trim}\n`;
 }
 
+export function composeForgePersona(identity: {
+  name: string;
+  mission: string;
+  personality: string;
+}): string {
+  return [
+    SOUL_HEADER,
+    "",
+    "## Identity",
+    "",
+    `You are ${identity.name.trim()}, a FuelBorn autonomous agent.`,
+    "",
+    "## Mission",
+    "",
+    identity.mission.trim(),
+    "",
+    "## Personality",
+    "",
+    identity.personality.trim(),
+    "",
+  ].join("\n");
+}
+
 export function buildAgentsMd(emailAddress: string | null): string {
   const lines = [
     AGENTS_BANNER,

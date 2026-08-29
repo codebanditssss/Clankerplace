@@ -69,3 +69,8 @@ test("forge client: backend status maps to truthful ignition copy", () => {
     label: "Ignition ready",
   });
 });
+
+test("forge client: pod installation retries keep the allocation stage visible", () => {
+  assert.equal(client.pendingIgnitionIndex("forge_pod_pending"), 1);
+  assert.equal(client.pendingIgnitionIndex("forge_not_ready"), 0);
+});

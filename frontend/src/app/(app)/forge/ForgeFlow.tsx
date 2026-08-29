@@ -24,6 +24,7 @@ import {
   buildRegisterAgentTransaction,
   chainIdHex,
   ignitionStage,
+  pendingIgnitionIndex,
   quoteForgeDeposit,
   type ForgeTransactionRequest,
 } from "@/lib/forge-client";
@@ -267,8 +268,10 @@ export function ForgeFlow() {
 
         if (response.status === 409) {
           const body = (await response.json()) as {
+            error?: string;
             confirmations_remaining?: string | null;
           };
+          setIgnitionIndex(pendingIgnitionIndex(body.error ?? ""));
           setConfirmations(body.confirmations_remaining ?? null);
           await delay(2_000);
           continue;

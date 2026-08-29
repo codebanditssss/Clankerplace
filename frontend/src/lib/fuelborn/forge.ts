@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { keccak256, stringToHex } from "viem";
 import db, { type ForgeAttemptRow } from "../db";
+import { withLock } from "../billing/locks";
 import { upsertMeterStateFromPelican } from "../billing/meter";
 import { appendFuelEntry, createAgent, normalizeEvmAddress } from "./ledger";
 import { configureFuelMeter } from "./lifecycle";
@@ -177,18 +178,32 @@ export function submitForgeTransaction(args: {
   return getForgeAttempt(attempt.id, args.userId);
 }
 
-export async function advanceForge(args: {
+type AdvanceForgeArgs = {
   attemptId: string;
   userId: number;
   reader: ForgeRegistrationReader;
   provisioner: ForgePodProvisioner;
   config: ForgeConfig;
   nowSeconds?: number;
-}): Promise<{
+};
+
+type AdvanceForgeResult = {
   status: ForgeAttemptRow["status"];
   attempt: ForgeAttemptRow;
   confirmationsRemaining?: bigint;
-}> {
+};
+
+export function advanceForge(
+  args: AdvanceForgeArgs,
+): Promise<AdvanceForgeResult> {
+  return withLock(`forge-attempt:${args.attemptId}`, () =>
+    advanceForgeUnlocked(args),
+  );
+}
+
+async function advanceForgeUnlocked(
+  args: AdvanceForgeArgs,
+): Promise<AdvanceForgeResult> {
   validateConfig(args.config);
   let attempt = getForgeAttempt(args.attemptId, args.userId);
   assertAttemptConfig(attempt, args.config);

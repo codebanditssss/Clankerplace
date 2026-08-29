@@ -205,6 +205,85 @@ test("forge: a verified birth provisions and activates exactly once", async () =
   assert.equal(entries.count, 1);
 });
 
+test("forge: concurrent advancement activates one agent without downgrading it", async () => {
+  const concurrent = forge.prepareForge({
+    userId: 601,
+    pelicanUserId: 9601,
+    idempotencyKey: "forge-request-concurrent",
+    name: "Spark",
+    mission: "Watch concurrent Forge requests",
+    personality: "Careful",
+    model: "glm-5.2",
+    ownerWallet,
+    depositWei: "100000000000000000",
+    config,
+  });
+  const concurrentTxHash = `0x${"e".repeat(64)}`;
+  forge.submitForgeTransaction({
+    attemptId: concurrent.attempt.id,
+    userId: 601,
+    txHash: concurrentTxHash,
+  });
+
+  let concurrentProvisionCalls = 0;
+  const concurrentReader: ForgeRegistrationReader = {
+    getChainId: async () => 10143,
+    getBlockNumber: async () => BigInt(105),
+    getRegistration: async () => ({
+      agentId: BigInt(79),
+      smith: ownerWallet,
+      metadataHash: concurrent.attempt.metadata_hash,
+      depositWei: BigInt("100000000000000000"),
+      transactionHash: concurrentTxHash,
+      logIndex: 4,
+      blockNumber: BigInt(100),
+      blockHash,
+    }),
+  };
+  const concurrentProvisioner: ForgePodProvisioner = {
+    provision: async () => {
+      concurrentProvisionCalls += 1;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      return {
+        podUuidShort: "forge079",
+        podFullUuid: "full-forge-079",
+        ramMib: 2048,
+        diskMib: 10240,
+        cpuPercent: 100,
+      };
+    },
+  };
+
+  const [first, second] = await Promise.all([
+    forge.advanceForge({
+      attemptId: concurrent.attempt.id,
+      userId: 601,
+      reader: concurrentReader,
+      provisioner: concurrentProvisioner,
+      config,
+    }),
+    forge.advanceForge({
+      attemptId: concurrent.attempt.id,
+      userId: 601,
+      reader: concurrentReader,
+      provisioner: concurrentProvisioner,
+      config,
+    }),
+  ]);
+
+  assert.equal(first.status, "active");
+  assert.equal(second.status, "active");
+  assert.equal(concurrentProvisionCalls, 1);
+  assert.equal(
+    forge.getForgeAttempt(concurrent.attempt.id, 601).status,
+    "active",
+  );
+  const entries = db
+    .prepare(`SELECT COUNT(*) AS count FROM fuel_ledger WHERE agent_id = ?`)
+    .get(concurrent.attempt.agent_id) as { count: number };
+  assert.equal(entries.count, 1);
+});
+
 test("forge: exact registration fields are required", async () => {
   const second = forge.prepareForge({
     userId: 601,

@@ -12,6 +12,7 @@ import {
 import { deploySizeById, DEFAULT_DEPLOY_SIZE_ID } from "../deploy-sizes";
 import { managedDeployEnv } from "../managed-ai";
 import { applicationApi } from "../pelican";
+import { createRuntimeForgePodFinalizer } from "./forge-finalizer-runtime";
 import { normalizeEvmAddress } from "./ledger";
 import type {
   ForgeConfig,
@@ -144,10 +145,12 @@ export function decodeAgentRegisteredLog(log: {
   depositWei: bigint;
 } | null {
   try {
+    const signature = log.topics[0];
+    if (!signature) return null;
     const decoded = decodeEventLog({
       abi: [AGENT_REGISTERED_EVENT],
       data: log.data,
-      topics: log.topics,
+      topics: [signature, ...log.topics.slice(1)],
       strict: true,
     });
     return {
@@ -165,10 +168,22 @@ export function createPelicanForgeProvisioner(args: {
   api?: ApplicationApi;
   env?: ForgeEnv;
   environmentForUser?: (userId: number) => Record<string, string>;
+  finalizePod?: (
+    attempt: Parameters<ForgePodProvisioner["provision"]>[0],
+    server: PelicanServer,
+  ) => Promise<void>;
 } = {}): ForgePodProvisioner {
   const api = args.api ?? (applicationApi as ApplicationApi);
   const env = args.env ?? process.env;
   const environmentForUser = args.environmentForUser ?? managedDeployEnv;
+  const runtimeFinalizer = createRuntimeForgePodFinalizer(api);
+  const finalizePod =
+    args.finalizePod ??
+    ((attempt: Parameters<ForgePodProvisioner["provision"]>[0], server: PelicanServer) =>
+      runtimeFinalizer(attempt, {
+        serverId: server.attributes.id,
+        podFullUuid: server.attributes.uuid,
+      }));
 
   return {
     provision: async (attempt) => {
@@ -183,6 +198,7 @@ export function createPelicanForgeProvisioner(args: {
         if (existing.attributes.user !== attempt.pelican_user_id) {
           throw new Error("existing Forge server belongs to another Pelican user");
         }
+        await finalizePod(attempt, existing);
         return provisionedPod(existing);
       }
 
@@ -219,6 +235,7 @@ export function createPelicanForgeProvisioner(args: {
           oom_killer: true,
         },
       }) as PelicanServer;
+      await finalizePod(attempt, created);
       return provisionedPod(created);
     },
   };

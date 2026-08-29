@@ -76,7 +76,10 @@ export type PodExecErrorInfo = {
 
 export function describePodExecError(err: unknown): PodExecErrorInfo {
   const raw = err instanceof Error ? err.message : String(err);
-  if (/container\s+\S+\s+is not running/i.test(raw)) {
+  if (
+    /container\s+\S+\s+is not running/i.test(raw) ||
+    /container\s+\S+\s+is restarting/i.test(raw)
+  ) {
     return {
       code: "pod_not_running",
       status: 409,

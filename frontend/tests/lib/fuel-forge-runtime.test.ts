@@ -63,12 +63,18 @@ test("forge runtime: decodes the contract's exact AgentRegistered event", () => 
     [metadataHash, BigInt("100000000000000000")],
   );
 
-  assert.deepEqual(runtime.decodeAgentRegisteredLog({ data, topics }), {
-    agentId: BigInt(77),
-    smith: "0x2222222222222222222222222222222222222222",
-    metadataHash,
-    depositWei: BigInt("100000000000000000"),
-  });
+  assert.deepEqual(
+    runtime.decodeAgentRegisteredLog({
+      data,
+      topics: topics as readonly `0x${string}`[],
+    }),
+    {
+      agentId: BigInt(77),
+      smith: "0x2222222222222222222222222222222222222222",
+      metadataHash,
+      depositWei: BigInt("100000000000000000"),
+    },
+  );
 });
 
 const attempt = {
@@ -81,6 +87,7 @@ const attempt = {
 
 test("forge runtime: provisioning retries recover the deterministic Pelican server", async () => {
   const calls: Array<{ path: string; opts: unknown }> = [];
+  const finalized: string[] = [];
   const api: ApplicationApi = async (path, opts) => {
     calls.push({ path, opts });
     if (path.startsWith("/servers/external/")) {
@@ -100,6 +107,9 @@ test("forge runtime: provisioning retries recover the deterministic Pelican serv
     api,
     env: { PELICAN_HERMES_EGG_ID: "15" },
     environmentForUser: () => ({ MANAGED: "yes" }),
+    finalizePod: async (forge, server) => {
+      finalized.push(`${forge.id}:${server.attributes.uuid}`);
+    },
   });
 
   const pod = await provisioner.provision(attempt);
@@ -113,10 +123,12 @@ test("forge runtime: provisioning retries recover the deterministic Pelican serv
   });
   assert.equal(calls.length, 1);
   assert.match(calls[0].path, /fuelborn-attempt-123$/);
+  assert.deepEqual(finalized, ["attempt-123:full-existing-77"]);
 });
 
 test("forge runtime: new provisioning picks capacity and sends one idempotent create", async () => {
   const calls: Array<{ path: string; opts?: { method?: string; body?: unknown } }> = [];
+  const finalized: string[] = [];
   const api: ApplicationApi = async (path, opts = {}) => {
     calls.push({ path, opts });
     if (path.startsWith("/servers/external/")) {
@@ -191,6 +203,9 @@ test("forge runtime: new provisioning picks capacity and sends one idempotent cr
     environmentForUser: (userId) => ({
       MANAGED_USER: String(userId),
     }),
+    finalizePod: async (forge, server) => {
+      finalized.push(`${forge.id}:${server.attributes.uuid}`);
+    },
   });
 
   const pod = await provisioner.provision(attempt);
@@ -208,4 +223,5 @@ test("forge runtime: new provisioning picks capacity and sends one idempotent cr
     DEFAULT_ONLY: "egg-default",
   });
   assert.deepEqual(body.allocation, { default: 89 });
+  assert.deepEqual(finalized, ["attempt-123:full-created-78"]);
 });

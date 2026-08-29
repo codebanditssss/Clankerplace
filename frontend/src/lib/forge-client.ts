@@ -95,6 +95,10 @@ export function ignitionStage(status: string): {
   return { index: 0, label: "Verifying birth" };
 }
 
+export function pendingIgnitionIndex(errorCode: string): number {
+  return errorCode === "forge_pod_pending" ? 1 : 0;
+}
+
 function formatMicroFuel(value: bigint): string {
   const whole = value / MICRO_FUEL_PER_FUEL;
   const fraction = (value % MICRO_FUEL_PER_FUEL)
