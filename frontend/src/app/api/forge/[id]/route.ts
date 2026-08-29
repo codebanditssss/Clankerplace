@@ -1,16 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
-import {
-  advanceForge,
-  getForgeAttempt,
-  publicForgeAttempt,
-  submitForgeTransaction,
-} from "@/lib/fuelborn/forge";
-import {
-  createPelicanForgeProvisioner,
-  createViemForgeRegistrationReader,
-  loadForgeRuntimeConfig,
-} from "@/lib/fuelborn/forge-runtime";
 import { isForgePodPendingError } from "@/lib/fuelborn/forge-finalizer";
 
 export const runtime = "nodejs";
@@ -24,6 +13,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   }
   const { id } = await context.params;
   try {
+    const { getForgeAttempt, publicForgeAttempt } = await import(
+      "@/lib/fuelborn/forge"
+    );
     return NextResponse.json({
       attempt: publicForgeAttempt(getForgeAttempt(id, user.id)),
     });
@@ -38,6 +30,17 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { id } = await context.params;
+  const [
+    { advanceForge, publicForgeAttempt, submitForgeTransaction },
+    {
+      createPelicanForgeProvisioner,
+      createViemForgeRegistrationReader,
+      loadForgeRuntimeConfig,
+    },
+  ] = await Promise.all([
+    import("@/lib/fuelborn/forge"),
+    import("@/lib/fuelborn/forge-runtime"),
+  ]);
   let body: { tx_hash?: unknown } = {};
   try {
     body = (await req.json()) as { tx_hash?: unknown };

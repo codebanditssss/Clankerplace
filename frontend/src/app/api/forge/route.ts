@@ -1,7 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
-import { prepareForge, publicForgeAttempt } from "@/lib/fuelborn/forge";
-import { loadForgeRuntimeConfig } from "@/lib/fuelborn/forge-runtime";
 
 export const runtime = "nodejs";
 
@@ -35,6 +33,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Forge pulls in the native SQLite runtime. Keep it behind the session
+    // check so anonymous Vercel requests can return 401 without loading it.
+    const [{ prepareForge, publicForgeAttempt }, { loadForgeRuntimeConfig }] =
+      await Promise.all([
+        import("@/lib/fuelborn/forge"),
+        import("@/lib/fuelborn/forge-runtime"),
+      ]);
     const config = loadForgeRuntimeConfig();
     const result = prepareForge({
       userId: user.id,
