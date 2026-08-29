@@ -337,6 +337,48 @@ export type FuelChainEventRow = {
   applied_at: number | null;
 };
 
+export type ForgeAttemptStatus =
+  | "awaiting_transaction"
+  | "submitted"
+  | "chain_verified"
+  | "provisioning"
+  | "provisioned"
+  | "active";
+
+export type ForgeAttemptRow = {
+  id: string;
+  agent_id: string;
+  user_id: number;
+  pelican_user_id: number;
+  idempotency_key: string;
+  name: string;
+  mission: string;
+  personality: string;
+  model: string;
+  metadata_json: string;
+  metadata_hash: string;
+  owner_wallet: string;
+  deposit_wei: string;
+  fuel_per_mon: string;
+  burn_rate_micro_fuel_per_second: number;
+  chain_id: number;
+  contract_address: string;
+  tx_hash: string | null;
+  log_index: number | null;
+  block_number: string | null;
+  block_hash: string | null;
+  token_id: string | null;
+  pod_uuid_short: string | null;
+  pod_full_uuid: string | null;
+  ram_mib: number | null;
+  disk_mib: number | null;
+  cpu_percent: number | null;
+  status: ForgeAttemptStatus;
+  last_error: string | null;
+  created_at: number;
+  updated_at: number;
+};
+
 /** Live billing state of a single pod. The metering tick walks all rows
  * with state='running' once a minute and debits the user's ledger for the
  * elapsed time. State transitions are driven by /api/deploy (provisioning),
@@ -770,6 +812,49 @@ function getDb(): DB {
       ON pod_meter_state(user_id, state);
     CREATE INDEX IF NOT EXISTS idx_pod_meter_state_state
       ON pod_meter_state(state);
+
+    -- Resumable bridge from a browser-signed Monad birth transaction to a
+    -- real Pelican pod. The request survives RPC lag and infrastructure
+    -- retries without creating a second agent or crediting its deposit twice.
+    CREATE TABLE IF NOT EXISTS forge_attempts (
+      id                 TEXT PRIMARY KEY,
+      agent_id           TEXT NOT NULL UNIQUE,
+      user_id            INTEGER NOT NULL,
+      pelican_user_id    INTEGER NOT NULL,
+      idempotency_key    TEXT NOT NULL,
+      name               TEXT NOT NULL,
+      mission            TEXT NOT NULL,
+      personality        TEXT NOT NULL,
+      model              TEXT NOT NULL,
+      metadata_json      TEXT NOT NULL,
+      metadata_hash      TEXT NOT NULL,
+      owner_wallet       TEXT NOT NULL,
+      deposit_wei        TEXT NOT NULL,
+      fuel_per_mon       TEXT NOT NULL,
+      burn_rate_micro_fuel_per_second INTEGER NOT NULL,
+      chain_id           INTEGER NOT NULL,
+      contract_address   TEXT NOT NULL,
+      tx_hash            TEXT,
+      log_index          INTEGER,
+      block_number       TEXT,
+      block_hash         TEXT,
+      token_id           TEXT,
+      pod_uuid_short     TEXT,
+      pod_full_uuid      TEXT,
+      ram_mib            INTEGER,
+      disk_mib           INTEGER,
+      cpu_percent        INTEGER,
+      status             TEXT NOT NULL CHECK (status IN ('awaiting_transaction','submitted','chain_verified','provisioning','provisioned','active')),
+      last_error         TEXT,
+      created_at         INTEGER NOT NULL,
+      updated_at         INTEGER NOT NULL,
+      UNIQUE (user_id, idempotency_key),
+      UNIQUE (chain_id, contract_address, tx_hash),
+      UNIQUE (chain_id, contract_address, token_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_forge_attempts_status
+      ON forge_attempts(status, updated_at);
 
     -- FuelBorn agents bind an on-chain identity to one real Pelican pod.
     CREATE TABLE IF NOT EXISTS fuelborn_agents (
