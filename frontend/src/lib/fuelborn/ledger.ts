@@ -27,8 +27,8 @@ export function createAgent(args: {
   const id = requireText(args.id, "agent id");
   const podUuidShort = requireText(args.podUuidShort, "pod uuid");
   const name = requireText(args.name, "agent name");
-  const ownerWallet = normalizeAddress(args.ownerWallet);
-  const contractAddress = normalizeAddress(args.contractAddress);
+  const ownerWallet = normalizeEvmAddress(args.ownerWallet);
+  const contractAddress = normalizeEvmAddress(args.contractAddress);
   requirePositiveInteger(args.userId, "user id");
   requirePositiveInteger(args.chainId, "chain id");
   if (!/^\d+$/.test(args.tokenId)) {
@@ -74,7 +74,7 @@ export function appendFuelEntry(args: {
   if (!Number.isSafeInteger(args.deltaMicroFuel) || args.deltaMicroFuel === 0) {
     throw new Error("deltaMicroFuel must be a safe non-zero integer");
   }
-  const event = args.chainEvent ? normalizeChainEvent(args.chainEvent) : null;
+  const event = args.chainEvent ? normalizeChainEventRef(args.chainEvent) : null;
   const now = args.nowSeconds ?? unixNow();
 
   const write = db.transaction(() => {
@@ -177,7 +177,7 @@ function assertSameChainCredit(
   }
 }
 
-function normalizeChainEvent(event: ChainEventRef): ChainEventRef {
+export function normalizeChainEventRef(event: ChainEventRef): ChainEventRef {
   requirePositiveInteger(event.chainId, "chain id");
   if (!Number.isSafeInteger(event.logIndex) || event.logIndex < 0) {
     throw new Error("log index must be a non-negative integer");
@@ -188,13 +188,13 @@ function normalizeChainEvent(event: ChainEventRef): ChainEventRef {
   }
   return {
     chainId: event.chainId,
-    contractAddress: normalizeAddress(event.contractAddress),
+    contractAddress: normalizeEvmAddress(event.contractAddress),
     txHash,
     logIndex: event.logIndex,
   };
 }
 
-function normalizeAddress(value: string): string {
+export function normalizeEvmAddress(value: string): string {
   const normalized = value.toLowerCase();
   if (!/^0x[0-9a-f]{40}$/.test(normalized)) {
     throw new Error("EVM address must be 20-byte hex");

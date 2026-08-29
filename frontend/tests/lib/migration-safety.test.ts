@@ -196,6 +196,8 @@ test("migration: new tables exist and are queryable", () => {
     "fuel_ledger",
     "fuel_meter_state",
     "fuel_lifecycle_effects",
+    "fuel_chain_events",
+    "fuel_chain_sync_state",
     "user_billing_state",
     "promo_codes",
     "promo_redemptions",

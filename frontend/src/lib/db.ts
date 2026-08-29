@@ -320,6 +320,22 @@ export type FuelLifecycleEffectRow = {
   completed_at: number | null;
 };
 
+export type FuelChainEventRow = {
+  id: number;
+  agent_id: string;
+  delta_micro_fuel: number;
+  chain_id: number;
+  contract_address: string;
+  tx_hash: string;
+  log_index: number;
+  block_number: string;
+  block_hash: string;
+  status: "observed" | "verified" | "applied";
+  observed_at: number;
+  verified_at: number | null;
+  applied_at: number | null;
+};
+
 /** Live billing state of a single pod. The metering tick walks all rows
  * with state='running' once a minute and debits the user's ledger for the
  * elapsed time. State transitions are driven by /api/deploy (provisioning),
@@ -828,6 +844,34 @@ function getDb(): DB {
     );
     CREATE INDEX IF NOT EXISTS idx_fuel_lifecycle_pending
       ON fuel_lifecycle_effects(status, id);
+
+    CREATE TABLE IF NOT EXISTS fuel_chain_events (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_id           TEXT NOT NULL,
+      delta_micro_fuel   INTEGER NOT NULL CHECK (delta_micro_fuel > 0),
+      chain_id           INTEGER NOT NULL,
+      contract_address   TEXT NOT NULL,
+      tx_hash            TEXT NOT NULL,
+      log_index          INTEGER NOT NULL,
+      block_number       TEXT NOT NULL,
+      block_hash         TEXT NOT NULL,
+      status             TEXT NOT NULL DEFAULT 'observed' CHECK (status IN ('observed','verified','applied')),
+      observed_at        INTEGER NOT NULL,
+      verified_at        INTEGER,
+      applied_at         INTEGER,
+      UNIQUE (chain_id, contract_address, tx_hash, log_index),
+      FOREIGN KEY (agent_id) REFERENCES fuelborn_agents(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_fuel_chain_event_status
+      ON fuel_chain_events(chain_id, contract_address, status, block_number);
+
+    CREATE TABLE IF NOT EXISTS fuel_chain_sync_state (
+      chain_id           INTEGER NOT NULL,
+      contract_address   TEXT NOT NULL,
+      last_scanned_block TEXT NOT NULL,
+      updated_at         INTEGER NOT NULL,
+      PRIMARY KEY (chain_id, contract_address)
+    );
 
     -- Per-user threshold-state bookkeeping. One row per user, lazy-inserted
     -- on first threshold evaluation by the thresholds engine.
