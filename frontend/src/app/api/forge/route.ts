@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { prepareForge, publicForgeAttempt } from "@/lib/fuelborn/forge";
 import { loadForgeRuntimeConfig } from "@/lib/fuelborn/forge-runtime";
 

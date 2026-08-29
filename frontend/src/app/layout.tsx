@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono, Rubik_Mono_One } from "next/font/google";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import { FUELBORN_BRAND } from "@/lib/brand";
 import "./globals.css";
 
@@ -14,16 +14,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  display: "swap",
-});
-
-// Numerals only — exposed as --font-numeric. Applied via the `.num` utility
-// (see globals.css) on integer/number-only spans so chunky digits sit
-// alongside JetBrains Mono text without touching letters.
-const rubikMono = Rubik_Mono_One({
-  variable: "--font-numeric",
-  subsets: ["latin"],
-  weight: ["400"],
   display: "swap",
 });
 
@@ -59,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${jetbrainsMono.variable} ${rubikMono.variable} h-full antialiased`}
+      className={`${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}

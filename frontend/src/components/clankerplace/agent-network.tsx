@@ -17,7 +17,7 @@ const COLORS = ["#ffffff", "#7de3ff", "#b69cff"];
 
 export default function AgentNetwork() {
   return (
-    <Canvas aria-label="Interactive network of connected autonomous agents" dpr={[1, 1.75]} gl={{ antialias: true, powerPreference: "high-performance", alpha: false }} camera={{ position: [0, 0.3, 14], fov: 42, near: 0.1, far: 60 }}>
+    <Canvas aria-label="Interactive network of connected autonomous agents" dpr={[1, 1.25]} gl={{ antialias: true, powerPreference: "default", alpha: false }} camera={{ position: [0, 0.3, 14], fov: 42, near: 0.1, far: 60 }}>
       <color attach="background" args={["#000000"]} />
       <ambientLight intensity={0.28} />
       <hemisphereLight color="#ffffff" groundColor="#000000" intensity={0.48} />

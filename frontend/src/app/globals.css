@@ -151,8 +151,8 @@
   --color-neutral-950:  var(--neutral-950);
 
   /* Fonts */
-  --font-sans: "NumericOverride", var(--font-manrope);
-  --font-mono: "NumericOverride", var(--font-jetbrains-mono);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains-mono);
 
   /* Radii */
   --radius-sm: 4px;
@@ -163,29 +163,11 @@
 
 /* -------- Base -------- */
 
-/*
- * Rubik Mono One restricted to digits + common numeric glyphs via
- * unicode-range. Browsers compose this with the regular text font, so
- * letters stay in Manrope / JetBrains Mono and only numerals (and the
- * symbols typically adjacent to them — %, decimal point, comma, +, -, /,
- * etc.) render in Rubik. Loaded from Google Fonts; the next/font
- * --font-numeric variable is intentionally unused at runtime because we
- * need a real @font-face with unicode-range, not a CSS variable swap.
- */
-@font-face {
-  font-family: "NumericOverride";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url(https://fonts.gstatic.com/s/rubikmonoone/v18/UqyJK8kPP3hjw6ANTdfRk9YSN-8wRqQrc_j9.woff2) format("woff2");
-  unicode-range: U+0030-0039, U+002B, U+002D, U+002E, U+002C, U+0025, U+002F, U+003A, U+0023;
-}
-
 html,
 body {
   background: var(--neutral-950);
   color: var(--text-primary);
-  font-family: "NumericOverride", var(--font-manrope), system-ui, sans-serif;
+  font-family: var(--font-manrope), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -228,7 +210,7 @@ body {
 
 /* Display type — large, tight tracking */
 .display {
-  font-family: "NumericOverride", var(--font-manrope), system-ui, sans-serif;
+  font-family: var(--font-manrope), system-ui, sans-serif;
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: -0.035em;
@@ -243,7 +225,7 @@ body {
 
 /* Micro-label: mono uppercase tracked */
 .micro {
-  font-family: "NumericOverride", var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
   font-size: 11px;
   line-height: 1;
   text-transform: uppercase;

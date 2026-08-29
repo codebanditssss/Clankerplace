@@ -32,6 +32,10 @@ const PUBLIC_PATHS = new Set([
   "/proofs",
   "/post",
   "/forge",
+  // Forge remains session-protected by the route handler. Let anonymous API
+  // calls reach it so they receive JSON 401 instead of a 307 POST redirect
+  // followed by a 405 from the login page.
+  "/api/forge",
 ]);
 
 const PUBLIC_PREFIXES = [
@@ -44,6 +48,7 @@ const PUBLIC_PREFIXES = [
   "/api/billing/credits/checkout",
   "/api/billing/portal",
   "/api/billing/webhooks/dodo",
+  "/api/forge/",
   // Pelican panel posts server-lifecycle events here. Signature-verified
   // by the route handler via PELICAN_WEBHOOK_SECRET (HMAC-SHA256).
   "/api/pelican/webhooks",
